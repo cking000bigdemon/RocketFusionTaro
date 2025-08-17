@@ -1,0 +1,58 @@
+.index {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+.title {
+  font-size: 36px;
+  font-weight: bold;
+  color: #007aff;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.subtitle {
+  font-size: 24px;
+  color: #666;
+  margin-bottom: 30px;
+}
+
+.button {
+  margin: 10px 0;
+  background-color: #007aff;
+  color: white;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.api-section {
+  margin-top: 40px;
+  padding: 20px;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  color: #333;
+  text-align: center;
+}
+
+.user-info {
+  display: block;
+  margin-top: 15px;
+  padding: 10px;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  color: #333;
+  font-size: 14px;
+  text-align: center;
+}
