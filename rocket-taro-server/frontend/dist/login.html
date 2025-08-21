@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - Rocket + Taro 系统</title>
+    <style>
+        /* Metro 设计风格登录页面 */
+        :root {
+            /* 主色调 - 清爽天空蓝系 */
+            --color-primary: #4A90E2;
+            --color-primary-light: #6BA3E8;
+            --color-primary-dark: #357ABD;
+            
+            /* 辅助色 - 清爽薄荷绿 */
+            --color-secondary: #50C878;
+            --color-secondary-light: #7DD49A;
+            --color-secondary-dark: #3DA863;
+            
+            /* 中性色 - 云朵白系 */
+            --color-white: #FFFFFF;
+            --color-light-gray: #F5F7FA;
+            --color-gray: #E1E8ED;
+            --color-dark-gray: #657786;
+            --color-black: #14171A;
+            
+            /* 状态色 */
+            --color-success: #50C878;
+            --color-warning: #FFAD1F;
+            --color-error: #E0245E;
+            --color-info: #4A90E2;
+            
+            /* 字体 */
+            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-black);
+        }
+
+        /* Metro风格背景磁贴效果 */
+        .background-tiles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.1;
+            z-index: 0;
+        }
+
+        .bg-tile {
+            position: absolute;
+            background: var(--color-white);
+            border-radius: 4px;
+            animation: floatTile 20s infinite ease-in-out;
+        }
+
+        .bg-tile:nth-child(1) { width: 100px; height: 100px; top: 10%; left: 10%; animation-delay: 0s; }
+        .bg-tile:nth-child(2) { width: 150px; height: 75px; top: 20%; right: 15%; animation-delay: 3s; }
+        .bg-tile:nth-child(3) { width: 80px; height: 80px; bottom: 30%; left: 20%; animation-delay: 6s; }
+        .bg-tile:nth-child(4) { width: 120px; height: 60px; bottom: 15%; right: 25%; animation-delay: 9s; }
+
+        @keyframes floatTile {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            25% { transform: translateY(-20px) rotate(2deg); }
+            50% { transform: translateY(-10px) rotate(-1deg); }
+            75% { transform: translateY(-30px) rotate(1deg); }
+        }
+
+        /* 登录容器 */
+        .login-container {
+            position: relative;
+            z-index: 1;
+            background: var(--color-white);
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 100%;
+            max-width: 400px;
+            margin: 24px;
+        }
+
+        /* 头部区域 */
+        .login-header {
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+            color: var(--color-white);
+            padding: 48px 32px 32px;
+            text-align: center;
+            position: relative;
+        }
+
+        .login-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="metro-pattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><rect x="0" y="0" width="20" height="20" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23metro-pattern)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .login-logo {
+            font-size: 48px;
+            margin-bottom: 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .login-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .login-subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 表单区域 */
+        .login-form {
+            padding: 32px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--color-dark-gray);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid var(--color-gray);
+            border-radius: 4px;
+            font-size: 16px;
+            font-family: var(--font-family);
+            transition: all 0.3s ease;
+            background: var(--color-white);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        }
+
+        .form-input.error {
+            border-color: var(--color-error);
+        }
+
+        /* Metro风格按钮 */
+        .btn-login {
+            width: 100%;
+            padding: 16px;
+            background: var(--color-primary);
+            color: var(--color-white);
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-login:hover {
+            background: var(--color-primary-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+        }
+
+        .btn-login:active {
+            background: var(--color-primary-dark);
+            transform: translateY(0);
+        }
+
+        .btn-login:disabled {
+            background: var(--color-gray);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-login .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--color-white);
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+
+        .btn-login.loading .loading-spinner {
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 错误消息 */
+        .error-message {
+            background: var(--color-error);
+            color: var(--color-white);
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+            animation: slideInDown 0.3s ease;
+        }
+
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 底部链接 */
+        .login-footer {
+            text-align: center;
+            padding: 24px 32px;
+            background: var(--color-light-gray);
+            border-top: 1px solid var(--color-gray);
+        }
+
+        .footer-link {
+            color: var(--color-primary);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s ease;
+        }
+
+        .footer-link:hover {
+            color: var(--color-primary-dark);
+        }
+
+        /* 记住我选项 */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .checkbox-input {
+            margin-right: 8px;
+            transform: scale(1.2);
+            accent-color: var(--color-primary);
+        }
+
+        .checkbox-label {
+            font-size: 14px;
+            color: var(--color-dark-gray);
+            cursor: pointer;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 480px) {
+            .login-container {
+                margin: 16px;
+            }
+            
+            .login-header {
+                padding: 32px 24px 24px;
+            }
+            
+            .login-form {
+                padding: 24px;
+            }
+            
+            .login-footer {
+                padding: 16px 24px;
+            }
+        }
+
+        /* 成功动画 */
+        .success-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(80, 200, 120, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .success-content {
+            background: var(--color-white);
+            padding: 48px;
+            border-radius: 8px;
+            text-align: center;
+            animation: scaleIn 0.5s ease;
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .success-icon {
+            font-size: 64px;
+            color: var(--color-success);
+            margin-bottom: 16px;
+        }
+
+        .success-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--color-black);
+        }
+    </style>
+</head>
+<body>
+    <!-- 背景磁贴效果 -->
+    <div class="background-tiles">
+        <div class="bg-tile"></div>
+        <div class="bg-tile"></div>
+        <div class="bg-tile"></div>
+        <div class="bg-tile"></div>
+    </div>
+
+    <!-- 登录容器 -->
+    <div class="login-container">
+        <!-- 头部 -->
+        <div class="login-header">
+            <div class="login-logo">🚀</div>
+            <h1 class="login-title">欢迎回来</h1>
+            <p class="login-subtitle">登录到 Rocket + Taro 系统</p>
+        </div>
+
+        <!-- 登录表单 -->
+        <form class="login-form" id="loginForm">
+            <div class="error-message" id="errorMessage"></div>
+
+            <div class="form-group">
+                <label class="form-label" for="username">用户名</label>
+                <input type="text" id="username" name="username" class="form-input" required 
+                       placeholder="请输入用户名" autocomplete="username">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">密码</label>
+                <input type="password" id="password" name="password" class="form-input" required 
+                       placeholder="请输入密码" autocomplete="current-password">
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="rememberMe" class="checkbox-input">
+                <label for="rememberMe" class="checkbox-label">记住我</label>
+            </div>
+
+            <button type="submit" class="btn-login" id="loginBtn">
+                <span class="loading-spinner"></span>
+                <span class="btn-text">登录</span>
+            </button>
+        </form>
+
+        <!-- 底部 -->
+        <div class="login-footer">
+            <a href="#" class="footer-link" onclick="showRegisterForm()">还没有账户？立即注册</a>
+        </div>
+    </div>
+
+    <!-- 成功动画 -->
+    <div class="success-animation" id="successAnimation">
+        <div class="success-content">
+            <div class="success-icon">✅</div>
+            <div class="success-text">登录成功！正在跳转...</div>
+        </div>
+    </div>
+
+    <script>
+        // 登录表单处理
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const loginBtn = document.getElementById('loginBtn');
+            const errorMessage = document.getElementById('errorMessage');
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            
+            // 重置错误状态
+            errorMessage.classList.remove('show');
+            usernameInput.classList.remove('error');
+            passwordInput.classList.remove('error');
+            
+            // 显示加载状态
+            loginBtn.disabled = true;
+            loginBtn.classList.add('loading');
+            loginBtn.querySelector('.btn-text').textContent = '登录中...';
+            
+            try {
+                const formData = new FormData(this);
+                const loginData = {
+                    username: formData.get('username'),
+                    password: formData.get('password')
+                };
+                
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(loginData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.code === 200) {
+                    // 登录成功
+                    showSuccessAnimation();
+                    
+                    // 存储用户信息到localStorage
+                    localStorage.setItem('userInfo', JSON.stringify(result.data.user));
+                    localStorage.setItem('sessionToken', result.data.session_token);
+                    
+                    // 2秒后跳转到主页
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                } else {
+                    // 登录失败
+                    showError(result.message || '登录失败，请检查用户名和密码');
+                    usernameInput.classList.add('error');
+                    passwordInput.classList.add('error');
+                }
+                
+            } catch (error) {
+                console.error('登录错误:', error);
+                showError('网络错误，请稍后重试');
+            } finally {
+                // 恢复按钮状态
+                loginBtn.disabled = false;
+                loginBtn.classList.remove('loading');
+                loginBtn.querySelector('.btn-text').textContent = '登录';
+            }
+        });
+
+        // 显示错误消息
+        function showError(message) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                errorMessage.classList.remove('show');
+            }, 3000);
+        }
+
+        // 显示成功动画
+        function showSuccessAnimation() {
+            const successAnimation = document.getElementById('successAnimation');
+            successAnimation.style.display = 'flex';
+        }
+
+        // 注册表单显示（占位功能）
+        function showRegisterForm() {
+            alert('注册功能开发中，请联系管理员创建账户。\\n\\n测试账户：\\n用户名: test\\n密码: test123\\n\\n管理员账户：\\n用户名: admin\\n密码: admin123');
+        }
+
+        // 页面加载时检查是否已登录
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('/api/auth/status');
+                const result = await response.json();
+                
+                if (result.code === 200 && result.data) {
+                    // 已登录，直接跳转到主页
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                // 忽略错误，继续显示登录页面
+            }
+        });
+
+        // 回车键登录
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const loginForm = document.getElementById('loginForm');
+                if (document.activeElement.closest('#loginForm')) {
+                    loginForm.dispatchEvent(new Event('submit'));
+                }
+            }
+        });
+    </script>
+</body>
+</html>

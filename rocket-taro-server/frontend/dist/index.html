@@ -5,139 +5,1096 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rocket + Taro 集成项目</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        :root {
+            /* 主色调 - 清爽天空蓝系 */
+            --color-primary: #4A90E2;
+            --color-primary-light: #6BA3E8;
+            --color-primary-dark: #357ABD;
+            
+            /* 辅助色 - 清爽薄荷绿 */
+            --color-secondary: #50C878;
+            --color-secondary-light: #7DD49A;
+            --color-secondary-dark: #3DA863;
+            
+            /* 中性色 - 云朵白系 */
+            --color-white: #FFFFFF;
+            --color-light-gray: #F5F7FA;
+            --color-gray: #E1E8ED;
+            --color-dark-gray: #657786;
+            --color-black: #14171A;
+            
+            /* 状态色 */
+            --color-success: #50C878;
+            --color-warning: #FFAD1F;
+            --color-error: #E0245E;
+            --color-info: #4A90E2;
+            
+            /* 字体 */
+            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        * {
             margin: 0;
-            padding: 40px 20px;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background: var(--color-light-gray);
+            color: var(--color-black);
+            line-height: 1.6;
             min-height: 100vh;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* 头部样式 */
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--color-primary-dark);
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 18px;
+            color: var(--color-dark-gray);
+        }
+
+        /* WP8风格动态磁贴网格 */
+        .tile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 48px;
+        }
+
+        /* WP8 Live Tile 样式 */
+        .live-tile {
+            position: relative;
+            width: 100%;
+            height: 140px;
+            border-radius: 4px;
+            background: var(--color-white);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .live-tile:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(74, 144, 226, 0.25);
+        }
+
+        .live-tile:active {
+            transform: translateY(0);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .tile-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.4s ease;
+            padding: 16px;
+        }
+
+        /* 默认层 - 应用信息 */
+        .tile-layer-default {
+            opacity: 1;
+            transform: translateY(0);
+            background: var(--color-white);
+        }
+
+        .live-tile:hover .tile-layer-default {
+            opacity: 0;
+            transform: translateY(-100%);
+        }
+
+        .tile-app-logo {
+            font-size: 48px;
+            margin-bottom: 8px;
+            transition: transform 0.3s ease;
+        }
+
+        .live-tile:hover .tile-app-logo {
+            transform: scale(1.1);
+        }
+
+        .tile-app-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--color-black);
+            text-align: center;
+        }
+
+        /* 消息层 - 悬浮显示 */
+        .tile-layer-message {
+            opacity: 0;
+            transform: translateY(100%);
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+            color: var(--color-white);
+            justify-content: flex-start;
+            align-items: flex-start;
+        }
+
+        .live-tile:hover .tile-layer-message {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .message-app-name {
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0.9;
+        }
+
+        .message-badge {
+            background: var(--color-error);
+            color: var(--color-white);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            animation: pulse 2s infinite;
         }
-        .container {
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            max-width: 600px;
-            width: 100%;
-            text-align: center;
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
         }
-        .logo {
-            font-size: 48px;
-            margin-bottom: 20px;
+
+        .message-content {
+            font-size: 16px;
+            font-weight: 500;
+            line-height: 1.4;
         }
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
+
+        .message-time {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 4px;
         }
-        .subtitle {
-            color: #666;
-            font-size: 18px;
-            margin-bottom: 30px;
-        }
-        .status {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        .api-section {
-            margin: 30px 0;
-            text-align: left;
-        }
-        .api-item {
-            background: #f8f9fa;
+
+        /* 状态卡片 */
+        .status-card {
+            background: var(--color-white);
             border-radius: 8px;
-            padding: 15px;
-            margin: 10px 0;
-            border-left: 4px solid #667eea;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 24px;
         }
-        .api-item code {
-            background: #e9ecef;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--color-gray);
         }
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+
+        .status-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--color-black);
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-badge.success {
+            background: var(--color-success);
+            color: var(--color-white);
+        }
+
+        .status-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: var(--color-dark-gray);
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--color-black);
+        }
+
+        /* API测试区域 */
+        .api-section {
+            background: var(--color-white);
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .api-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--color-black);
+        }
+
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .api-button {
+            background: var(--color-primary);
+            color: var(--color-white);
             border: none;
             padding: 12px 24px;
-            border-radius: 25px;
-            cursor: pointer;
+            border-radius: 4px;
             font-size: 16px;
-            transition: transform 0.2s;
-            text-decoration: none;
-            display: inline-block;
-            margin: 5px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
-        .btn:hover {
-            transform: translateY(-2px);
+
+        .api-button:hover {
+            background: var(--color-primary-light);
+            transform: translateY(-1px);
+        }
+
+        .api-button:active {
+            background: var(--color-primary-dark);
+            transform: translateY(0);
+        }
+
+        .api-button.success {
+            background: var(--color-success);
+        }
+
+        .api-button.error {
+            background: var(--color-error);
+        }
+
+        .api-button.loading {
+            background: var(--color-gray);
+            cursor: not-allowed;
+        }
+
+        .response-area {
+            margin-top: 24px;
+            padding: 16px;
+            background: var(--color-light-gray);
+            border-radius: 4px;
+            border-left: 4px solid var(--color-primary);
+            display: none;
+        }
+
+        .response-area.show {
+            display: block;
+        }
+
+        .response-content {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: var(--color-black);
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .tile-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            
+            .live-tile {
+                height: 120px;
+            }
+            
+            .tile-app-logo {
+                font-size: 36px;
+            }
+            
+            .tile-app-name {
+                font-size: 16px;
+            }
+            
+            .message-content {
+                font-size: 14px;
+            }
+        }
+
+        /* 加载动画 */
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--color-white);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 字体栈 */
+        :root {
+            --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+        }
+
+        /* 数据填写表单样式 */
+        .form-section {
+            background: var(--color-white);
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 24px;
+        }
+
+        .form-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--color-black);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--color-black);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            padding: 12px 16px;
+            border: 2px solid var(--color-gray);
+            border-radius: 4px;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            background: var(--color-white);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        }
+
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-submit {
+            background: var(--color-primary);
+            color: var(--color-white);
+            border: none;
+            padding: 16px 32px;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .form-submit:hover {
+            background: var(--color-primary-light);
+            transform: translateY(-1px);
+        }
+
+        .form-submit:active {
+            background: var(--color-primary-dark);
+            transform: translateY(0);
+        }
+
+        .form-submit:disabled {
+            background: var(--color-gray);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .data-list {
+            background: var(--color-white);
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 24px;
+        }
+
+        .data-item {
+            padding: 16px;
+            border-bottom: 1px solid var(--color-gray);
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .data-item:last-child {
+            border-bottom: none;
+        }
+
+        .data-info h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--color-black);
+        }
+
+        .data-info p {
+            font-size: 14px;
+            color: var(--color-dark-gray);
+            margin: 2px 0;
+        }
+
+        .data-time {
+            font-size: 12px;
+            color: var(--color-dark-gray);
+            text-align: right;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="logo">🚀</div>
-        <h1>Rocket + Taro 集成项目</h1>
-        <p class="subtitle">服务已成功启动！</p>
-        
-        <div class="status">
-            <strong>服务状态:</strong> ✅ 运行中<br>
-            <strong>后端地址:</strong> <code>http://localhost:8000</code>
+        <header class="header">
+            <h1>🚀 Rocket + Taro 集成项目</h1>
+            <p>基于WP8动态磁贴风格的现代Web应用</p>
+            <div style="margin-top: 16px;">
+                <span id="userWelcome" style="font-size: 16px; color: var(--color-primary-dark); margin-right: 16px;"></span>
+                <button id="logoutBtn" class="api-button" onclick="logout()" style="padding: 8px 16px; font-size: 14px; display: none;">
+                    <span>🚪</span>
+                    <span>退出登录</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- WP8风格动态磁贴 -->
+        <div class="tile-grid">
+            <div class="live-tile" onclick="testAPI('/api/user')">
+                <div class="tile-layer tile-layer-default">
+                    <div class="tile-app-logo">👤</div>
+                    <div class="tile-app-name">用户管理</div>
+                </div>
+                <div class="tile-layer tile-layer-message">
+                    <div class="message-header">
+                        <div class="message-app-name">用户系统</div>
+                        <div class="message-badge">5</div>
+                    </div>
+                    <div class="message-content">新增5位用户</div>
+                    <div class="message-time">刚刚</div>
+                </div>
+            </div>
+
+            <div class="live-tile" onclick="testAPI('/api/data')">
+                <div class="tile-layer tile-layer-default">
+                    <div class="tile-app-logo">📊</div>
+                    <div class="tile-app-name">数据统计</div>
+                </div>
+                <div class="tile-layer tile-layer-message">
+                    <div class="message-header">
+                        <div class="message-app-name">数据分析</div>
+                        <div class="message-badge">12</div>
+                    </div>
+                    <div class="message-content">12条数据更新</div>
+                    <div class="message-time">2分钟前</div>
+                </div>
+            </div>
+
+            <div class="live-tile" onclick="testAPI('/api/health')">
+                <div class="tile-layer tile-layer-default">
+                    <div class="tile-app-logo">🏥</div>
+                    <div class="tile-app-name">健康检查</div>
+                </div>
+                <div class="tile-layer tile-layer-message">
+                    <div class="message-header">
+                        <div class="message-app-name">系统监控</div>
+                    </div>
+                    <div class="message-content">系统运行正常</div>
+                    <div class="message-time">实时</div>
+                </div>
+            </div>
+
+            <div class="live-tile" onclick="openTaroApp()">
+                <div class="tile-layer tile-layer-default">
+                    <div class="tile-app-logo">📱</div>
+                    <div class="tile-app-name">Taro应用</div>
+                </div>
+                <div class="tile-layer tile-layer-message">
+                    <div class="message-header">
+                        <div class="message-app-name">跨平台</div>
+                    </div>
+                    <div class="message-content">点击启动Taro应用</div>
+                    <div class="message-time">准备就绪</div>
+                </div>
+            </div>
+
+            <div class="live-tile" onclick="scrollToForm()">
+                <div class="tile-layer tile-layer-default">
+                    <div class="tile-app-logo">📝</div>
+                    <div class="tile-app-name">数据填写</div>
+                </div>
+                <div class="tile-layer tile-layer-message">
+                    <div class="message-header">
+                        <div class="message-app-name">数据录入</div>
+                        <div class="message-badge" id="dataCount">0</div>
+                    </div>
+                    <div class="message-content">填写用户信息</div>
+                    <div class="message-time">点击开始</div>
+                </div>
+            </div>
         </div>
 
+        <!-- 系统状态卡片 -->
+        <div class="status-card">
+            <div class="status-header">
+                <div class="status-title">系统状态</div>
+                <div class="status-badge success" id="statusBadge">运行中</div>
+            </div>
+            <div class="status-info">
+                <div class="info-item">
+                    <div class="info-label">Rocket服务</div>
+                    <div class="info-value" id="rocketStatus">检测中...</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">响应时间</div>
+                    <div class="info-value" id="responseTime">- ms</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">最后检查</div>
+                    <div class="info-value" id="lastCheck">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据填写表单 -->
+        <div class="form-section" id="dataForm">
+            <div class="form-title">
+                <span>📝</span>
+                <span>用户数据填写</span>
+            </div>
+            <form id="userDataForm" onsubmit="submitUserData(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="userName">姓名 *</label>
+                        <input type="text" id="userName" name="name" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="userEmail">邮箱 *</label>
+                        <input type="email" id="userEmail" name="email" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="userPhone">手机号</label>
+                        <input type="tel" id="userPhone" name="phone" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="userMessage">备注信息</label>
+                        <textarea id="userMessage" name="message" class="form-input form-textarea" placeholder="请输入备注信息..."></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="form-submit" id="submitBtn">
+                    <span>💾</span>
+                    <span>保存数据</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- 数据列表 -->
+        <div class="data-list" id="dataList">
+            <div class="form-title">
+                <span>📋</span>
+                <span>已保存数据</span>
+                <button class="api-button" onclick="loadUserData()" style="margin-left: auto; padding: 8px 16px; font-size: 14px;">
+                    <span>🔄</span>
+                    <span>刷新</span>
+                </button>
+            </div>
+            <div id="dataItems">
+                <p style="text-align: center; color: var(--color-dark-gray); padding: 32px;">点击刷新按钮加载数据...</p>
+            </div>
+        </div>
+
+        <!-- API测试区域 -->
         <div class="api-section">
-            <h3>可用API端点:</h3>
-            <div class="api-item">
-                <strong>健康检查:</strong><br>
-                <code>GET /api/health</code>
+            <div class="api-title">API测试控制台</div>
+            <div class="api-grid">
+                <button class="api-button" onclick="testAPI('/api/user')">
+                    <span>👤</span>
+                    <span>用户数据</span>
+                </button>
+                <button class="api-button" onclick="testAPI('/api/data')">
+                    <span>📊</span>
+                    <span>业务数据</span>
+                </button>
+                <button class="api-button" onclick="testAPI('/api/health')">
+                    <span>🏥</span>
+                    <span>健康检查</span>
+                </button>
+                <button class="api-button" onclick="testAPI('/api/mock-user-data')">
+                    <span>📝</span>
+                    <span>模拟数据API</span>
+                </button>
             </div>
-            <div class="api-item">
-                <strong>用户数据:</strong><br>
-                <code>GET /api/user</code>
+            <div class="response-area" id="responseArea">
+                <div class="response-content" id="responseContent">点击上方按钮测试API...</div>
             </div>
-            <div class="api-item">
-                <strong>示例数据:</strong><br>
-                <code>GET /api/data</code>
-            </div>
-        </div>
-
-        <div>
-            <button class="btn" onclick="testAPI('/api/health')">测试健康检查</button>
-            <button class="btn" onclick="testAPI('/api/user')">测试用户API</button>
-            <button class="btn" onclick="testAPI('/api/data')">测试数据API</button>
-        </div>
-
-        <div id="result" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px; display: none;">
-            <strong>API响应:</strong>
-            <pre id="response" style="text-align: left; background: #f1f3f4; padding: 10px; border-radius: 5px; font-size: 14px;"></pre>
         </div>
     </div>
 
     <script>
-        async function testAPI(endpoint) {
-            const resultDiv = document.getElementById('result');
-            const responseDiv = document.getElementById('response');
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+            checkSystemStatus();
+            startLiveTileRotation();
+            loadUserData();
             
+            // 键盘快捷键支持
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey || e.metaKey) {
+                    switch(e.key) {
+                        case '1':
+                            e.preventDefault();
+                            testAPI('/api/user');
+                            break;
+                        case '2':
+                            e.preventDefault();
+                            testAPI('/api/data');
+                            break;
+                        case '3':
+                            e.preventDefault();
+                            testAPI('/api/health');
+                            break;
+                        case '4':
+                            e.preventDefault();
+                            testAPI('/api/user-data');
+                            break;
+                    }
+                }
+            });
+        });
+
+        // 动态磁贴内容轮播
+        function startLiveTileRotation() {
+            const messages = [
+                {
+                    app: '用户管理',
+                    content: '新增用户注册',
+                    count: Math.floor(Math.random() * 3) + 1,
+                    time: '刚刚'
+                },
+                {
+                    app: '数据统计',
+                    content: '数据同步完成',
+                    count: Math.floor(Math.random() * 5) + 1,
+                    time: '1分钟前'
+                },
+                {
+                    app: '健康检查',
+                    content: '系统性能优化',
+                    count: 0,
+                    time: '实时'
+                }
+            ];
+
+            // 每5秒更新一次消息内容
+            setInterval(() => {
+                const tiles = document.querySelectorAll('.live-tile');
+                tiles.forEach((tile, index) => {
+                    if (index < messages.length) {
+                        const messageLayer = tile.querySelector('.tile-layer-message');
+                        const messageContent = messageLayer.querySelector('.message-content');
+                        const messageBadge = messageLayer.querySelector('.message-badge');
+                        const messageTime = messageLayer.querySelector('.message-time');
+                        
+                        if (messageContent && messageBadge && messageTime) {
+                            messageContent.textContent = messages[index].content;
+                            messageTime.textContent = messages[index].time;
+                            
+                            if (messages[index].count > 0) {
+                                messageBadge.textContent = messages[index].count;
+                                messageBadge.style.display = 'flex';
+                            } else {
+                                messageBadge.style.display = 'none';
+                            }
+                        }
+                    }
+                });
+            }, 5000);
+        }
+
+        // 检查系统状态
+        async function checkSystemStatus() {
             try {
-                const response = await fetch(endpoint);
-                const data = await response.json();
+                const startTime = Date.now();
+                const response = await fetch('/api/health');
+                const endTime = Date.now();
                 
-                responseDiv.textContent = JSON.stringify(data, null, 2);
-                resultDiv.style.display = 'block';
+                if (response.ok) {
+                    document.getElementById('rocketStatus').textContent = '正常';
+                    document.getElementById('responseTime').textContent = `${endTime - startTime} ms`;
+                    document.getElementById('lastCheck').textContent = new Date().toLocaleTimeString();
+                    document.getElementById('statusBadge').textContent = '运行中';
+                } else {
+                    throw new Error('服务异常');
+                }
             } catch (error) {
-                responseDiv.textContent = '错误: ' + error.message;
-                resultDiv.style.display = 'block';
+                document.getElementById('rocketStatus').textContent = '连接失败';
+                document.getElementById('statusBadge').textContent = '异常';
+                document.getElementById('statusBadge').className = 'status-badge error';
             }
         }
 
-        // 页面加载时自动测试健康检查
-        window.addEventListener('load', () => {
-            testAPI('/api/health');
-        });
+        // API测试功能
+        async function testAPI(endpoint) {
+            const button = event.target.closest('.api-button') || event.target;
+            const originalText = button.innerHTML;
+            const responseArea = document.getElementById('responseArea');
+            const responseContent = document.getElementById('responseContent');
+            
+            // 显示加载状态
+            button.innerHTML = '<div class="loading-spinner"></div> 测试中...';
+            button.classList.add('loading');
+            responseArea.classList.add('show');
+            responseContent.textContent = '正在请求数据...';
+            
+            try {
+                const startTime = Date.now();
+                const response = await fetch(endpoint);
+                const endTime = Date.now();
+                
+                let data;
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    data = await response.text();
+                }
+                
+                const responseTime = endTime - startTime;
+                
+                responseContent.textContent = `✅ 请求成功 (${responseTime}ms)\n\n${JSON.stringify(data, null, 2)}`;
+                button.classList.remove('loading');
+                button.classList.add('success');
+                
+                // 更新状态信息
+                document.getElementById('responseTime').textContent = `${responseTime} ms`;
+                document.getElementById('lastCheck').textContent = new Date().toLocaleTimeString();
+                
+            } catch (error) {
+                responseContent.textContent = `❌ 请求失败\n\n${error.message}`;
+                button.classList.remove('loading');
+                button.classList.add('error');
+            } finally {
+                // 恢复按钮状态
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.classList.remove('loading', 'success', 'error');
+                }, 2000);
+            }
+        }
+
+        // 启动Taro应用
+        function openTaroApp() {
+            window.open('/taro-app', '_blank');
+        }
+
+        // 定期更新系统状态
+        setInterval(checkSystemStatus, 30000);
+
+        // 数据表单相关功能
+        async function submitUserData(event) {
+            event.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const originalContent = submitBtn.innerHTML;
+            
+            // 显示提交状态
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="loading-spinner"></div> 保存中...';
+            
+            try {
+                const formData = new FormData(event.target);
+                const userData = {
+                    name: formData.get('name'),
+                    email: formData.get('email'),
+                    phone: formData.get('phone') || null,
+                    message: formData.get('message') || null
+                };
+                
+                const response = await fetch('/api/user-data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(userData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.code === 200) {
+                    // 清空表单
+                    event.target.reset();
+                    
+                    // 显示成功消息
+                    showMessage('数据保存成功！', 'success');
+                    
+                    // 重新加载数据列表
+                    loadUserData();
+                    
+                    // 更新磁贴计数
+                    updateDataCount();
+                    
+                } else {
+                    showMessage('保存失败: ' + result.message, 'error');
+                }
+                
+            } catch (error) {
+                console.error('提交错误:', error);
+                showMessage('网络错误，请稍后重试', 'error');
+            } finally {
+                // 恢复按钮状态
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalContent;
+            }
+        }
+
+        async function loadUserData() {
+            const dataItems = document.getElementById('dataItems');
+            
+            try {
+                dataItems.innerHTML = '<p style="text-align: center; color: var(--color-dark-gray); padding: 32px;">加载中...</p>';
+                
+                const response = await fetch('/api/user-data');
+                const result = await response.json();
+                
+                if (result.code === 200 && result.data && result.data.length > 0) {
+                    const items = result.data.map(item => `
+                        <div class="data-item">
+                            <div class="data-info">
+                                <h4>${escapeHtml(item.name)}</h4>
+                                <p>📧 ${escapeHtml(item.email)}</p>
+                                ${item.phone ? `<p>📱 ${escapeHtml(item.phone)}</p>` : ''}
+                                ${item.message ? `<p>💬 ${escapeHtml(item.message)}</p>` : ''}
+                            </div>
+                            <div class="data-time">
+                                ${new Date(item.created_at).toLocaleString('zh-CN')}
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    dataItems.innerHTML = items;
+                    updateDataCount(result.data.length);
+                } else {
+                    dataItems.innerHTML = '<p style="text-align: center; color: var(--color-dark-gray); padding: 32px;">暂无数据</p>';
+                    updateDataCount(0);
+                }
+                
+            } catch (error) {
+                console.error('加载数据错误:', error);
+                dataItems.innerHTML = '<p style="text-align: center; color: var(--color-error); padding: 32px;">加载失败，请重试</p>';
+            }
+        }
+
+        function updateDataCount(count = null) {
+            const badge = document.getElementById('dataCount');
+            if (count !== null) {
+                badge.textContent = count;
+                badge.style.display = count > 0 ? 'flex' : 'none';
+            }
+        }
+
+        function scrollToForm() {
+            document.getElementById('dataForm').scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+
+        function showMessage(text, type = 'info') {
+            // 创建消息提示
+            const message = document.createElement('div');
+            message.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 16px 24px;
+                border-radius: 4px;
+                color: white;
+                font-weight: 500;
+                z-index: 1000;
+                animation: slideInRight 0.3s ease;
+                max-width: 400px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            `;
+            
+            switch(type) {
+                case 'success':
+                    message.style.backgroundColor = 'var(--color-success)';
+                    message.textContent = '✅ ' + text;
+                    break;
+                case 'error':
+                    message.style.backgroundColor = 'var(--color-error)';
+                    message.textContent = '❌ ' + text;
+                    break;
+                default:
+                    message.style.backgroundColor = 'var(--color-info)';
+                    message.textContent = 'ℹ️ ' + text;
+            }
+            
+            document.body.appendChild(message);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                message.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => {
+                    document.body.removeChild(message);
+                }, 300);
+            }, 3000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 认证相关功能
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('/api/auth/current');
+                const result = await response.json();
+                
+                if (result.code === 200 && result.data) {
+                    // 用户已登录，显示欢迎信息和登出按钮
+                    const userWelcome = document.getElementById('userWelcome');
+                    const logoutBtn = document.getElementById('logoutBtn');
+                    
+                    userWelcome.textContent = `欢迎，${result.data.username}！`;
+                    logoutBtn.style.display = 'inline-flex';
+                } else {
+                    // 用户未登录，重定向到登录页
+                    window.location.href = '/login.html';
+                }
+            } catch (error) {
+                console.error('认证检查失败:', error);
+                // 网络错误时也重定向到登录页
+                window.location.href = '/login.html';
+            }
+        }
+
+        async function logout() {
+            const logoutBtn = document.getElementById('logoutBtn');
+            const originalContent = logoutBtn.innerHTML;
+            
+            // 显示登出状态
+            logoutBtn.disabled = true;
+            logoutBtn.innerHTML = '<div class="loading-spinner"></div> 退出中...';
+            
+            try {
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.code === 200) {
+                    showMessage('退出成功，正在跳转...', 'success');
+                    
+                    // 延迟跳转到登录页
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 1000);
+                } else {
+                    showMessage('退出失败: ' + result.message, 'error');
+                }
+            } catch (error) {
+                console.error('退出错误:', error);
+                showMessage('网络错误，请稍后重试', 'error');
+            } finally {
+                // 恢复按钮状态
+                logoutBtn.disabled = false;
+                logoutBtn.innerHTML = originalContent;
+            }
+        }
+
+        // 添加动画样式
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOutRight {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>
