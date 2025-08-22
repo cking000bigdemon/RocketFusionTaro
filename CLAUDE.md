@@ -115,3 +115,42 @@ Automated build scripts are available in `scripts/` directory:
 
 ### Multi-Platform Frontend
 The Taro frontend can target multiple platforms. Use appropriate npm commands based on target platform. Built assets are automatically served by the Rocket backend.
+
+## Development Standards
+
+### Version Documentation Management
+- **Mandatory Requirement**: Every new feature development must include separate version documentation
+- **Bilingual Requirement**: All important documents must provide both Chinese and English versions
+- **Directory Structure**: Use docs/en/ and docs/zh-CN/ for language separation
+- **Document Location**: 
+  - English version: docs/en/releases/vX.X.X.md
+  - Chinese version: docs/zh-CN/releases/vX.X.X.md
+- **Template Usage**: 
+  - English template: docs/en/releases/template.md
+  - Chinese template: docs/zh-CN/releases/template.md
+
+### Documentation Internationalization Standards
+- **Directory Structure**: 
+  - English documents unified under `docs/en/` directory
+  - Chinese documents unified under `docs/zh-CN/` directory
+  - Both language subdirectory structures must be completely identical
+- **Content Requirements**: 
+  - Chinese and English versions must remain synchronized
+  - Use unified Chinese-English terminology mapping
+  - Code examples and configurations must be consistent
+  - File names must be identical in both language directories
+- **Maintenance Responsibility**: 
+  - Every document update must simultaneously update both Chinese and English versions
+  - New documents must be created in both languages simultaneously
+  - Document deletion must remove both language versions simultaneously
+
+### Documentation Update Workflow
+1. Before developing new features, create version document drafts in docs/en/releases/ and docs/zh-CN/releases/
+2. During development, continuously update relevant documents in both language directories
+3. After feature completion, update related API documentation, user guides, etc. in both Chinese and English versions
+4. Before release, check consistency of docs/en/ and docs/zh-CN/ directory structures
+5. Ensure corresponding file content is synchronized and accurate
+
+### Documentation Navigation
+- Provide navigation links to the other language in each language's root directory
+- Provide document language selection guidance in README.md

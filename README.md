@@ -1,6 +1,20 @@
 # Rocket + Taro 全栈应用模板
 
+> 🌏 **文档语言**: [English Documentation](docs/en/README.md) | [中文文档](docs/zh-CN/README.md)
+
 一个现代化的全栈应用模板，基于 Rocket 后端和 Taro 前端，支持 Web、H5 和微信小程序多端运行。
+
+## 📚 完整文档
+
+本项目提供完整的中英文双语文档：
+
+- **[📖 中文文档](docs/zh-CN/README.md)** - 完整的中文开发文档
+- **[📖 English Documentation](docs/en/README.md)** - Complete English development documentation
+
+### 核心文档
+- [开发指南](docs/zh-CN/guides/development.md) | [Development Guide](docs/en/guides/development.md)
+- [API 接口文档](docs/zh-CN/api/api-reference.md) | [API Reference](docs/en/api/api-reference.md)
+- [数据库指南](docs/zh-CN/guides/database-guide.md) | [Database Guide](docs/en/guides/database-guide.md)
 
 ## 🚀 快速开始
 
