@@ -10,7 +10,10 @@ const config = {
   sourceRoot: 'src',
   outputRoot: 'dist',
   plugins: [],
-  defineConstants: {},
+  defineConstants: {
+    // 定义环境变量，小程序开发时使用本地地址
+    'process.env.API_BASE_URL': JSON.stringify('http://localhost:8000')
+  },
   copy: {
     patterns: [],
     options: {}
@@ -21,10 +24,39 @@ const config = {
     enable: false
   },
   mini: {
+    webpackChain(chain) {
+      // 优化小程序构建
+      chain.optimization.splitChunks({
+        chunks: 'all',
+        maxInitialRequests: Infinity,
+        minSize: 0,
+        cacheGroups: {
+          default: {
+            name: 'common',
+            minChunks: 2,
+            priority: 1
+          },
+          vendors: {
+            name: 'vendors',
+            test: module => /[\\/]node_modules[\\/]/.test(module.resource),
+            priority: 10
+          }
+        }
+      })
+    },
+    optimizeMainPackage: {
+      enable: true
+    },
+    addChunkPages(pages) {
+      // 可以配置分包页面
+      return pages
+    },
     postcss: {
       pxtransform: {
         enable: true,
-        config: {}
+        config: {
+          selectorBlackList: ['nut-']  // 如果使用UI库，添加相应的类名前缀
+        }
       },
       url: {
         enable: true,
@@ -39,6 +71,11 @@ const config = {
           generateScopedName: '[name]__[local]___[hash:base64:5]'
         }
       }
+    },
+    // 小程序特有配置
+    debugReact: false,
+    minifyXML: {
+      collapseWhitespace: false
     }
   },
   h5: {

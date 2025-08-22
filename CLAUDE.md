@@ -8,15 +8,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 cd rocket-taro-server
 
-# Development mode with debug output
+# Development mode with structured logging
 cargo run
 
 # Production build and run
 cargo build --release
 cargo run --release
 
-# Enable debug logging
-ROCKET_LOG=debug cargo run
+# Check code quality
+cargo check
+cargo clippy
+
+# Environment variables (optional)
+export DATABASE_URL="host=192.168.5.222 port=5432 user=user_ck password=ck320621 dbname=postgres"
 ```
 
 ### Frontend (Taro Application)

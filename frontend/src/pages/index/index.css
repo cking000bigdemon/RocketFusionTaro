@@ -1,58 +1,103 @@
 .index {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 40px 20px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  min-height: 100vh;
 }
 
 .title {
-  font-size: 36px;
+  font-size: 28px;
   font-weight: bold;
-  color: #007aff;
-  margin-bottom: 20px;
   text-align: center;
+  margin-bottom: 20px;
+  color: #2c3e50;
 }
 
 .subtitle {
-  font-size: 24px;
-  color: #666;
-  margin-bottom: 30px;
+  font-size: 16px;
+  text-align: center;
+  margin-bottom: 20px;
+  color: #7f8c8d;
 }
 
 .button {
-  margin: 10px 0;
-  background-color: #007aff;
+  background-color: #3498db;
   color: white;
+  border: none;
   border-radius: 8px;
   padding: 12px 24px;
-  font-size: 16px;
+  font-size: 14px;
+  margin: 10px auto;
+  width: 240px;
+  display: block;
 }
 
-.api-section {
-  margin-top: 40px;
-  padding: 20px;
+.button.primary {
+  background-color: #e74c3c;
+}
+
+.button:hover {
+  opacity: 0.8;
+}
+
+.section {
+  margin-bottom: 30px;
   background-color: white;
   border-radius: 12px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  width: 100%;
-  max-width: 400px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .section-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: bold;
   margin-bottom: 15px;
-  color: #333;
+  color: #34495e;
   text-align: center;
+  border-bottom: 2px solid #ecf0f1;
+  padding-bottom: 10px;
 }
 
 .user-info {
-  display: block;
-  margin-top: 15px;
-  padding: 10px;
-  background-color: #f0f0f0;
+  background-color: #ecf0f1;
   border-radius: 8px;
-  color: #333;
+  padding: 15px;
+  margin-top: 15px;
+}
+
+.user-info text {
+  display: block;
+  margin-bottom: 8px;
   font-size: 14px;
-  text-align: center;
+  color: #2c3e50;
+}
+
+.user-item {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-left: 4px solid #3498db;
+}
+
+.user-item text {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 13px;
+  color: #2c3e50;
+}
+
+.input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  border: 1px solid #bdc3c7;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: #fff;
+  box-sizing: border-box;
+}
+
+.input:focus {
+  border-color: #3498db;
+  outline: none;
 }

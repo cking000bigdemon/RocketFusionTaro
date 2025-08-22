@@ -11,9 +11,19 @@
       "Bash(psql:*)",
       "Bash(move:*)",
       "Bash(mv:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(ROCKET_LOG=debug cargo run)",
+      "Bash(curl:*)",
+      "Bash(redis-cli:*)",
+      "Bash(npm run build:weapp:*)",
+      "Bash(npm install:*)",
+      "Bash(npx cross-env BABEL_SHOW_CONFIG_FOR=srcpagesaboutindex.jsx npm run build:weapp)",
+      "Bash(del /Q dist\\*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "F:\\f\\rust-project\\Rocket"
+    ]
   }
 }
