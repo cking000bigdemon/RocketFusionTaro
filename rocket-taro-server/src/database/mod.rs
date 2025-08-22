@@ -1,23 +1,28 @@
 use tokio_postgres::{Client, NoTls, Error};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tracing::{info, error};
 
 pub mod auth;
 
 pub type DbPool = Arc<Mutex<Client>>;
 
 pub async fn create_connection() -> Result<DbPool, Error> {
-    let (client, connection) = tokio_postgres::connect(
-        "host=192.168.5.222 port=5432 user=user_ck password=ck320621 dbname=postgres",
-        NoTls,
-    ).await?;
+    // 从环境变量或默认配置获取数据库连接字符串
+    let database_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "host=192.168.5.222 port=5432 user=user_ck password=ck320621 dbname=postgres".to_string());
+    
+    info!("Connecting to database...");
+    let (client, connection) = tokio_postgres::connect(&database_url, NoTls).await?;
 
     // 在后台运行连接
     tokio::spawn(async move {
         if let Err(e) = connection.await {
-            eprintln!("数据库连接错误: {}", e);
+            error!("Database connection error: {}", e);
         }
     });
+    
+    info!("Database connection established successfully");
 
     // 创建表（如果不存在）
     client.execute(
@@ -94,13 +99,11 @@ async fn init_auth_tables(client: &Client) -> Result<(), Error> {
     ).await?.get(0);
 
     if existing_users == 0 {
+        info!("Creating default users...");
         // 生成新的密码哈希
         use bcrypt::{hash, DEFAULT_COST};
-        let admin_hash = hash("admin123", DEFAULT_COST).unwrap();
-        let test_hash = hash("test123", DEFAULT_COST).unwrap();
-        
-        println!("🔐 生成admin密码哈希: {}", admin_hash);
-        println!("🔐 生成test密码哈希: {}", test_hash);
+        let admin_hash = hash("password", DEFAULT_COST).unwrap();
+        let test_hash = hash("password", DEFAULT_COST).unwrap();
         
         // 创建admin用户 (密码: admin123)
         client.execute(
@@ -130,26 +133,23 @@ async fn init_auth_tables(client: &Client) -> Result<(), Error> {
             ],
         ).await?;
         
-        println!("✅ 创建了默认用户: admin 和 test");
+        info!("Default users created successfully: admin and test");
     } else {
-        // 如果用户已存在，更新密码哈希以确保正确
-        // 使用简单的明文密码进行测试
-        println!("🔄 更新现有用户的密码哈希");
-        
-        // 为admin123生成稳定的哈希
-        let admin_hash = "$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi"; // "password"的bcrypt哈希，我们改为用"password"
+        info!("Updating existing user password hashes...");
+        // 为password生成稳定的哈希
+        let password_hash = "$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi"; // "password"的bcrypt哈希
         
         client.execute(
             "UPDATE users SET password_hash = $1 WHERE username = $2",
-            &[&admin_hash, &"admin"],
+            &[&password_hash, &"admin"],
         ).await?;
         
         client.execute(
             "UPDATE users SET password_hash = $1 WHERE username = $2", 
-            &[&admin_hash, &"test"], // 两个用户都用相同密码"password"
+            &[&password_hash, &"test"], // 两个用户都用相同密码"password"
         ).await?;
         
-        println!("✅ 更新了用户密码哈希: admin 和 test (密码: password)");
+        info!("User password hashes updated successfully: admin and test (password: password)");
     }
 
     Ok(())

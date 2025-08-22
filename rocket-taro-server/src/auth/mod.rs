@@ -1,3 +1,3 @@
 pub mod guards;
 
-pub use guards::{AuthenticatedUser, OptionalUser, AdminUser, AuthError};
+pub use guards::{AuthenticatedUser, OptionalUser, RequestInfo};

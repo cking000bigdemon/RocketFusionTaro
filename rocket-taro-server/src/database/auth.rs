@@ -2,10 +2,11 @@ use tokio_postgres::{Client, Error};
 use std::sync::Arc;
 use std::net::IpAddr;
 use tokio::sync::Mutex;
-use chrono::{DateTime, Utc, Duration};
+use chrono::{Utc, Duration};
 use uuid::Uuid;
+use tracing::{info, warn, debug};
 
-use crate::models::auth::{User, UserSession, LoginRequest, RegisterRequest, PasswordHash, generate_session_token};
+use crate::models::auth::{User, UserSession, LoginRequest, PasswordHash, generate_session_token};
 
 pub type DbPool = Arc<Mutex<Client>>;
 
@@ -16,7 +17,7 @@ pub async fn authenticate_user(
 ) -> Result<Option<User>, Error> {
     let client = pool.lock().await;
     
-    println!("🔍 正在验证用户: {}", login_req.username);
+    debug!("Authenticating user: {}", login_req.username);
     
     let row = client.query_opt(
         "SELECT id, username, email, password_hash, full_name, avatar_url, is_active, is_admin, last_login_at, created_at, updated_at 
@@ -25,16 +26,15 @@ pub async fn authenticate_user(
     ).await?;
 
     if let Some(row) = row {
-        println!("✅ 找到用户: {}", login_req.username);
+        debug!("User found: {}", login_req.username);
         let password_hash: String = row.get(3);
         let hash = PasswordHash { hash: password_hash.clone() };
         
-        println!("🔐 验证密码，存储的hash: {}", &password_hash[..20]);
+        debug!("Verifying password for user: {}", login_req.username);
         let password_valid = hash.verify(&login_req.password);
-        println!("🔐 密码验证结果: {}", password_valid);
         
         if password_valid {
-            println!("✅ 认证成功: {}", login_req.username);
+            info!("Authentication successful for user: {}", login_req.username);
             let user = User {
                 id: row.get(0),
                 username: row.get(1),
@@ -49,10 +49,10 @@ pub async fn authenticate_user(
             };
             return Ok(Some(user));
         } else {
-            println!("❌ 密码验证失败: {}", login_req.username);
+            warn!("Password verification failed for user: {}", login_req.username);
         }
     } else {
-        println!("❌ 用户不存在: {}", login_req.username);
+        warn!("User not found: {}", login_req.username);
     }
     
     Ok(None)
@@ -65,22 +65,20 @@ pub async fn create_user_session(
     user_agent: Option<String>,
     ip_address: Option<IpAddr>,
 ) -> Result<UserSession, Error> {
-    println!("🔧 开始创建用户会话, user_id: {}", user_id);
+    debug!("Creating user session for user_id: {}", user_id);
     let client = pool.lock().await;
     
     let session_token = generate_session_token();
     let expires_at = Utc::now() + Duration::days(7); // 7天有效期
     let now = Utc::now();
-    
-    println!("🔧 准备插入会话数据");
     let row = client.query_one(
         "INSERT INTO user_sessions (user_id, session_token, user_agent, ip_address, expires_at, created_at) 
          VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
         &[&user_id, &session_token, &user_agent, &ip_address, &expires_at, &now],
     ).await?;
     
-    println!("🔧 会话数据插入成功");
     let session_id: Uuid = row.get(0);
+    info!("User session created successfully with id: {}", session_id);
     
     Ok(UserSession {
         id: session_id,
@@ -134,10 +132,12 @@ pub async fn validate_session(
         };
 
         // 更新最后访问时间
-        let _ = client.execute(
+        if let Err(e) = client.execute(
             "UPDATE user_sessions SET last_accessed_at = CURRENT_TIMESTAMP WHERE id = $1",
             &[&session.id],
-        ).await;
+        ).await {
+            warn!("Failed to update last_accessed_at: {}", e);
+        }
 
         return Ok(Some((user, session)));
     }
@@ -198,17 +198,6 @@ pub async fn log_login_attempt(
     Ok(())
 }
 
-/* 注册功能暂时禁用
-// 注册新用户（暂时简化实现）
-pub async fn register_user(
-    _pool: &DbPool,
-    _register_req: &RegisterRequest,
-) -> Result<User, Error> {
-    // 暂时返回错误，注册功能稍后完善  
-    use std::io::{Error as IoError, ErrorKind};
-    Err(Error::from(IoError::new(ErrorKind::Unsupported, "注册功能暂未实现")))
-}
-*/
 
 // 清理过期会话
 pub async fn cleanup_expired_sessions(pool: &DbPool) -> Result<u64, Error> {

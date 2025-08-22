@@ -7,14 +7,19 @@ mod routes;
 mod models;
 mod database;
 mod auth;
+mod cache;
 
 use rocket::fs::{FileServer, relative};
+use tracing_subscriber;
 
 #[launch]
 async fn rocket() -> _ {
+    // 初始化日志系统
+    tracing_subscriber::fmt::init();
+    
     // 初始化数据库连接
     let db_pool = database::create_connection().await
-        .expect("无法连接到数据库");
+        .expect("Failed to connect to database");
 
     rocket::build()
         .manage(db_pool)
@@ -33,8 +38,14 @@ async fn rocket() -> _ {
             routes::auth::logout,
             routes::auth::get_current_user,
             routes::auth::auth_status,
-            routes::auth::check_auth
+            routes::auth::check_auth,
+            routes::cache::cache_health_check,
+            routes::cache::invalidate_cache,
+            routes::cache::cleanup_expired_sessions,
+            routes::cache::get_cache_keys,
+            routes::cache::warmup_cache
         ])
         .mount("/", FileServer::from(relative!("frontend/dist")))
         .attach(fairings::cors::CORS)
+        .attach(cache::CacheFairing)
 }

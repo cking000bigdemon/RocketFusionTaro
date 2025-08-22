@@ -1,6 +1,6 @@
-use rocket::{State, serde::json::Json, post, get, http::{Status, Cookie, CookieJar, SameSite}, Request};
+use rocket::{State, serde::json::Json, post, get, http::{Status, Cookie, CookieJar, SameSite}};
 use rocket::time::{OffsetDateTime, Duration};
-use std::net::IpAddr;
+use tracing::{info, warn, error, debug};
 
 use crate::models::{
     response::ApiResponse,
@@ -10,57 +10,62 @@ use crate::database::{
     DbPool,
     auth::{authenticate_user, create_user_session, update_last_login, logout_session, log_login_attempt},
 };
-use crate::auth::{AuthenticatedUser, OptionalUser};
+use crate::auth::{AuthenticatedUser, OptionalUser, RequestInfo};
+use crate::cache::{RedisPool, user::UserCache, session::SessionCache};
 
-// 获取客户端IP地址的辅助函数
-fn get_client_ip(request: &Request) -> Option<IpAddr> {
-    // 尝试从 X-Real-IP 头获取
-    if let Some(ip_str) = request.headers().get_one("X-Real-IP") {
-        if let Ok(ip) = ip_str.parse() {
-            return Some(ip);
-        }
-    }
-    
-    // 尝试从 X-Forwarded-For 头获取
-    if let Some(forwarded) = request.headers().get_one("X-Forwarded-For") {
-        if let Some(ip_str) = forwarded.split(',').next() {
-            if let Ok(ip) = ip_str.trim().parse() {
-                return Some(ip);
-            }
-        }
-    }
-    
-    // 使用远程地址
-    request.client_ip()
-}
-
-// 获取User-Agent
-fn get_user_agent(request: &Request) -> Option<String> {
-    request.headers().get_one("User-Agent").map(|s| s.to_string())
-}
 
 #[post("/api/auth/login", data = "<login_req>")]
 pub async fn login(
     pool: &State<DbPool>,
+    redis: &State<RedisPool>,
     cookies: &CookieJar<'_>,
     login_req: Json<LoginRequest>,
+    request_info: RequestInfo,
 ) -> Result<Json<ApiResponse<LoginResponse>>, Status> {
-    let ip_address = "127.0.0.1".parse::<IpAddr>().unwrap();
-    let user_agent = "unknown".to_string();
+    let ip_address = request_info.ip_address.unwrap_or_else(|| "127.0.0.1".parse().unwrap());
+    let user_agent = request_info.user_agent.unwrap_or_else(|| "unknown".to_string());
+    
+    let user_cache = UserCache::new(redis.inner().clone());
+    let session_cache = SessionCache::new(redis.inner().clone());
+    
+    // 检查账户是否被锁定
+    if let Ok(is_locked) = user_cache.is_account_locked(&login_req.username, 5).await {
+        if is_locked {
+            warn!("Account locked due to too many failed attempts: {}", login_req.username);
+            return Ok(Json(ApiResponse::error("账户已被锁定，请稍后再试")));
+        }
+    }
     
     match authenticate_user(pool, &login_req).await {
         Ok(Some(user)) => {
-            println!("🎯 开始创建用户会话");
+            info!("Starting user session creation for user: {}", user.username);
             // 创建用户会话
             match create_user_session(pool, user.id, Some(user_agent.clone()), Some(ip_address)).await {
                 Ok(session) => {
-                    println!("✅ 会话创建成功");
+                    info!("User session created successfully for user: {}", user.username);
                     // 更新最后登录时间
-                    let _ = update_last_login(pool, user.id).await;
-                    println!("✅ 更新登录时间完成");
+                    if let Err(e) = update_last_login(pool, user.id).await {
+                        warn!("Failed to update last login time: {}", e);
+                    }
+                    
+                    // 缓存用户信息和会话
+                    if let Err(e) = user_cache.cache_user(&user).await {
+                        debug!("Failed to cache user info: {}", e);
+                    }
+                    if let Err(e) = user_cache.cache_username_mapping(&user.username, user.id).await {
+                        debug!("Failed to cache username mapping: {}", e);
+                    }
+                    if let Err(e) = session_cache.cache_user_session(&user, &session).await {
+                        debug!("Failed to cache user session: {}", e);
+                    }
+                    
+                    // 清除登录失败记录
+                    if let Err(e) = user_cache.clear_login_failures(&login_req.username).await {
+                        debug!("Failed to clear login failures: {}", e);
+                    }
                     
                     // 记录成功登录日志
-                    let _ = log_login_attempt(
+                    if let Err(e) = log_login_attempt(
                         pool,
                         Some(user.id),
                         &login_req.username,
@@ -68,11 +73,11 @@ pub async fn login(
                         Some(ip_address),
                         Some(user_agent),
                         None,
-                    ).await;
-                    println!("✅ 登录日志记录完成");
+                    ).await {
+                        warn!("Failed to log login attempt: {}", e);
+                    }
                     
                     // 设置会话Cookie
-                    println!("🍪 开始设置Cookie");
                     let mut cookie = Cookie::new("session_token", session.session_token.clone());
                     cookie.set_same_site(SameSite::Lax);
                     cookie.set_http_only(true);
@@ -80,20 +85,20 @@ pub async fn login(
                     cookie.set_expires(OffsetDateTime::now_utc() + Duration::hours(8));
                     cookie.set_path("/");
                     cookies.add_private(cookie);
-                    println!("✅ Cookie设置完成");
                     
                     let response = LoginResponse {
                         user: UserInfo::from(user.clone()),
                         session_token: session.session_token,
                         expires_at: session.expires_at,
                     };
-                    println!("✅ 准备返回登录响应");
+                    info!("Login successful for user: {}", user.username);
                     
                     Ok(Json(ApiResponse::success(response)))
                 }
-                Err(_) => {
+                Err(e) => {
+                    error!("Failed to create session for user {}: {}", user.username, e);
                     // 记录失败日志
-                    let _ = log_login_attempt(
+                    if let Err(log_err) = log_login_attempt(
                         pool,
                         Some(user.id),
                         &login_req.username,
@@ -101,15 +106,24 @@ pub async fn login(
                         Some(ip_address),
                         Some(user_agent),
                         Some("会话创建失败".to_string()),
-                    ).await;
+                    ).await {
+                        warn!("Failed to log login attempt: {}", log_err);
+                    }
                     
                     Err(Status::InternalServerError)
                 }
             }
         }
         Ok(None) => {
+            warn!("Login failed for username: {} - invalid credentials", login_req.username);
+            
+            // 记录登录失败
+            if let Err(e) = user_cache.record_login_failure(&login_req.username).await {
+                debug!("Failed to record login failure: {}", e);
+            }
+            
             // 记录失败登录日志
-            let _ = log_login_attempt(
+            if let Err(e) = log_login_attempt(
                 pool,
                 None,
                 &login_req.username,
@@ -117,46 +131,39 @@ pub async fn login(
                 Some(ip_address),
                 Some(user_agent),
                 Some("用户名或密码错误".to_string()),
-            ).await;
+            ).await {
+                warn!("Failed to log login attempt: {}", e);
+            }
             
             Ok(Json(ApiResponse::error("用户名或密码错误")))
         }
-        Err(_) => Err(Status::InternalServerError),
+        Err(e) => {
+            error!("Authentication error for username {}: {}", login_req.username, e);
+            Err(Status::InternalServerError)
+        }
     }
 }
 
-// 注册功能暂时禁用
-/*
-#[post("/api/auth/register", data = "<register_req>")]
-pub async fn register(
-    pool: &State<DbPool>,
-    register_req: Json<RegisterRequest>,
-) -> Result<Json<ApiResponse<UserInfo>>, Status> {
-    match register_user(pool, &register_req).await {
-        Ok(user) => {
-            let user_info = UserInfo::from(user);
-            Ok(Json(ApiResponse::success(user_info)))
-        }
-        Err(e) => {
-            if let Some(db_error) = e.as_db_error() {
-                if db_error.code().code() == "23505" { // unique_violation
-                    return Ok(Json(ApiResponse::error("用户名或邮箱已存在")));
-                }
-            }
-            Ok(Json(ApiResponse::error("注册失败")))
-        }
-    }
-}
-*/
 
 #[post("/api/auth/logout")]
 pub async fn logout(
     pool: &State<DbPool>,
+    redis: &State<RedisPool>,
     cookies: &CookieJar<'_>,
     auth_user: AuthenticatedUser,
 ) -> Json<ApiResponse<()>> {
-    // 删除会话
-    let _ = logout_session(pool, &auth_user.session.session_token).await;
+    info!("User logout: {}", auth_user.user.username);
+    let session_cache = SessionCache::new(redis.inner().clone());
+    
+    // 删除缓存中的会话
+    if let Err(e) = session_cache.invalidate_session(&auth_user.session.session_token).await {
+        debug!("Failed to invalidate session cache: {}", e);
+    }
+    
+    // 删除数据库中的会话
+    if let Err(e) = logout_session(pool, &auth_user.session.session_token).await {
+        warn!("Failed to logout session: {}", e);
+    }
     
     // 删除Cookie
     cookies.remove_private(Cookie::build(("session_token", "")));
