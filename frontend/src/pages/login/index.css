@@ -1,0 +1,291 @@
+/* 登录页面容器 */
+.login-container {
+  min-height: 100vh;
+  position: relative;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+/* 背景装饰 */
+.login-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+}
+
+.bg-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  animation: float 6s ease-in-out infinite;
+}
+
+.bg-circle-1 {
+  width: 200px;
+  height: 200px;
+  top: 10%;
+  left: -50px;
+  animation-delay: 0s;
+}
+
+.bg-circle-2 {
+  width: 150px;
+  height: 150px;
+  top: 60%;
+  right: -30px;
+  animation-delay: 2s;
+}
+
+.bg-circle-3 {
+  width: 100px;
+  height: 100px;
+  top: 30%;
+  right: 20%;
+  animation-delay: 4s;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(5deg);
+  }
+}
+
+/* 登录内容区域 */
+.login-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 400px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 40px 30px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* 登录头部 */
+.login-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.login-title {
+  display: block;
+  font-size: 28px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.login-subtitle {
+  display: block;
+  font-size: 16px;
+  color: #666;
+}
+
+/* 表单样式 */
+.login-form {
+  margin-bottom: 30px;
+}
+
+.form-group {
+  margin-bottom: 24px;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.input-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.form-input {
+  width: 100%;
+  height: 50px;
+  border: 2px solid #e1e5e9;
+  border-radius: 12px;
+  padding: 0 16px;
+  font-size: 16px;
+  background: #fafbfc;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  border-color: #667eea;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* 登录按钮 */
+.login-button {
+  width: 100%;
+  height: 50px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 10px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.login-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.login-button.loading {
+  opacity: 0.7;
+  transform: none;
+}
+
+.login-button::after {
+  border: none;
+}
+
+/* 快速登录 */
+.quick-login {
+  margin-bottom: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #e1e5e9;
+}
+
+.quick-login-title {
+  display: block;
+  text-align: center;
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.quick-login-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.quick-btn {
+  flex: 1;
+  height: 36px;
+  border-radius: 8px;
+  font-size: 12px;
+  border: 1px solid #e1e5e9;
+  background: white;
+  color: #666;
+  transition: all 0.3s ease;
+  max-width: 120px;
+}
+
+.quick-btn::after {
+  border: none;
+}
+
+.admin-btn:hover {
+  background: #f8f9fa;
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.user-btn:hover {
+  background: #f8f9fa;
+  border-color: #28a745;
+  color: #28a745;
+}
+
+/* 底部信息 */
+.login-footer {
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid #e1e5e9;
+}
+
+.footer-text {
+  display: block;
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.footer-subtext {
+  display: block;
+  font-size: 12px;
+  color: #888;
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+  .login-container {
+    padding: 20px 15px;
+  }
+  
+  .login-content {
+    padding: 30px 20px;
+  }
+  
+  .login-title {
+    font-size: 24px;
+  }
+  
+  .quick-login-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .quick-btn {
+    max-width: none;
+  }
+}
+
+/* 小程序特定样式调整 */
+@media screen and (max-width: 750px) {
+  .bg-circle-1 {
+    width: 150px;
+    height: 150px;
+  }
+  
+  .bg-circle-2 {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .bg-circle-3 {
+    width: 80px;
+    height: 80px;
+  }
+}
+
+/* 加载状态动画 */
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.login-button.loading {
+  animation: pulse 1.5s ease-in-out infinite;
+}

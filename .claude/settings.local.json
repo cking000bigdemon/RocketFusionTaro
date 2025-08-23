@@ -19,7 +19,12 @@
       "Bash(npm install:*)",
       "Bash(npx cross-env BABEL_SHOW_CONFIG_FOR=srcpagesaboutindex.jsx npm run build:weapp)",
       "Bash(del /Q dist\\*)",
-      "Bash(npm run build:h5:*)"
+      "Bash(npm run build:h5:*)",
+      "Bash(node:*)",
+      "Bash(npm rebuild:*)",
+      "Bash(npm:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": [],

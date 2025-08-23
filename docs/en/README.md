@@ -14,6 +14,11 @@ Welcome to the English documentation for the Rocket-Taro project! This project i
 - [Database User Guide](guides/database-guide.md) - Database system architecture, configuration, and usage
 - [Cache System Guide](guides/cache-guide.md) - Redis cache system usage instructions
 
+### 🎯 Routing System (Backend-Driven Architecture)
+- [Routing Architecture Design](architecture/backend-driven-routing.md) - Detailed backend-driven routing system architecture
+- [Routing Development Guide](guides/routing-development-guide.md) - How to develop with backend-driven routing system
+- [Route Command API](api/route-command-api.md) - Complete route command API specification
+
 ### 📋 Project Information
 - [Development Summary](project/development-summary.md) - User authentication system development summary
 - [Optimization Report](project/optimization-report.md) - Project optimization completion report
@@ -24,10 +29,17 @@ Welcome to the English documentation for the Rocket-Taro project! This project i
 
 ## 🏗️ Project Architecture
 
-This project adopts a modern full-stack architecture:
+This project adopts a modern **backend-driven routing** full-stack architecture:
+
+### 🚀 Core Features
+- **Backend-Driven Routing**: Business logic centralized in backend, frontend acts as executor responding to route commands
+- **Multi-Platform Consistency**: H5 and WeChat Mini Programs execute the same business processes
+- **Dynamic Process Control**: Backend can adjust user experience flows in real-time
+- **Simplified Frontend Logic**: Frontend focuses on UI presentation and user interaction
 
 ### Backend (Rocket Server)
 - **Framework**: Rust + Rocket Web Framework
+- **Architecture Pattern**: Use Case Layer + Route Command Generation
 - **Database**: PostgreSQL 
 - **Cache**: Redis
 - **Authentication**: Session-based authentication mechanism
@@ -35,6 +47,7 @@ This project adopts a modern full-stack architecture:
 
 ### Frontend (Taro Application)
 - **Framework**: Taro 3.6.23 + React 18
+- **Route Handling**: Route Command Parser (RouterHandler)
 - **State Management**: Zustand
 - **Platform Support**: H5, WeChat Mini Program, Web
 - **Build Tools**: Webpack 5 + Babel

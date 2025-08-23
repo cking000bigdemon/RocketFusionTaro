@@ -8,6 +8,7 @@ mod models;
 mod database;
 mod auth;
 mod cache;
+mod use_cases;
 
 use rocket::fs::{FileServer, relative};
 use tracing_subscriber;
@@ -45,6 +46,7 @@ async fn rocket() -> _ {
             routes::cache::get_cache_keys,
             routes::cache::warmup_cache
         ])
+        .mount("/", routes::cors::cors_routes())
         .mount("/", FileServer::from(relative!("frontend/dist")))
         .attach(fairings::cors::CORS)
         .attach(cache::CacheFairing)

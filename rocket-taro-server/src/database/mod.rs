@@ -12,7 +12,6 @@ pub async fn create_connection() -> Result<DbPool, Error> {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "host=192.168.5.222 port=5432 user=user_ck password=ck320621 dbname=postgres".to_string());
     
-    info!("Connecting to database...");
     let (client, connection) = tokio_postgres::connect(&database_url, NoTls).await?;
 
     // 在后台运行连接
@@ -21,8 +20,6 @@ pub async fn create_connection() -> Result<DbPool, Error> {
             error!("Database connection error: {}", e);
         }
     });
-    
-    info!("Database connection established successfully");
 
     // 创建表（如果不存在）
     client.execute(
@@ -99,7 +96,6 @@ async fn init_auth_tables(client: &Client) -> Result<(), Error> {
     ).await?.get(0);
 
     if existing_users == 0 {
-        info!("Creating default users...");
         // 生成新的密码哈希
         use bcrypt::{hash, DEFAULT_COST};
         let admin_hash = hash("password", DEFAULT_COST).unwrap();
@@ -133,9 +129,9 @@ async fn init_auth_tables(client: &Client) -> Result<(), Error> {
             ],
         ).await?;
         
-        info!("Default users created successfully: admin and test");
+        // 默认用户创建完成
     } else {
-        info!("Updating existing user password hashes...");
+        // 更新现有用户密码哈希
         // 为password生成稳定的哈希
         let password_hash = "$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi"; // "password"的bcrypt哈希
         
@@ -149,7 +145,7 @@ async fn init_auth_tables(client: &Client) -> Result<(), Error> {
             &[&password_hash, &"test"], // 两个用户都用相同密码"password"
         ).await?;
         
-        info!("User password hashes updated successfully: admin and test (password: password)");
+        // 用户密码哈希更新完成
     }
 
     Ok(())
