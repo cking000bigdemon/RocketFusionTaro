@@ -1,4 +1,5 @@
 pub mod auth_use_case;
+pub mod route_command_generator;  // 新增：路由决策器
 
 use std::error::Error;
 use std::fmt;

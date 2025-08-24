@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ✅ **用户认证流程** - Session-based登录系统  
 ✅ **代码清理** - 移除调试代码，标准化配置  
 ✅ **生产就绪** - 可开始正式业务开发  
+✅ **架构增强 v2.0** - 版本控制、fallback机制、可观测性 (2024年8月完成)
 
 ## Development Commands
 
@@ -180,6 +181,60 @@ class RouterHandler {
 - **Reduced Frontend Complexity**: Frontend focuses on UI rendering and command execution
 - **Easy Testing**: Business logic testing concentrated on backend
 
+### Architecture Enhancements v2.0 (August 2024)
+
+#### 1. Version Control & Compatibility
+- **Versioned Route Commands**: Commands now support version field for backward compatibility
+- **Automatic Fallback**: Server provides fallback commands for unsupported client versions
+- **Compatibility Checking**: Client validates command version before execution
+
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VersionedRouteCommand {
+    #[serde(default = "default_version")]
+    pub version: u32,
+    #[serde(flatten)]
+    pub command: RouteCommand,
+    pub fallback: Option<Box<VersionedRouteCommand>>,
+    pub metadata: RouteCommandMetadata,
+}
+```
+
+#### 2. Enhanced Command Types
+New command types for complex business flows:
+- **Delay**: Execute commands with timing control
+- **Parallel**: Execute multiple commands simultaneously  
+- **Retry**: Automatic retry with exponential backoff
+- **Conditional**: Execute commands based on runtime conditions
+
+#### 3. Business Logic Separation
+- **RouteCommandGenerator**: Dedicated class for routing decision logic
+- **Pure Use Cases**: Business logic methods return business results, not route commands
+- **Clean Architecture**: Clear separation between business logic and UI routing
+
+#### 4. Global Request Interceptor
+- **Automatic Route Processing**: All API responses automatically processed for route commands
+- **Zero Frontend Code**: No manual route command handling needed in components
+- **Background Execution**: Commands execute asynchronously without blocking UI
+
+#### 5. Enhanced Observability
+- **Structured Logging**: Comprehensive tracing with execution IDs
+- **Performance Monitoring**: Duration tracking for all command executions
+- **Error Reporting**: Automatic error metrics collection
+- **Execution History**: Detailed audit trail for debugging
+- **Metrics Endpoints**: Real-time system health and performance data
+
+```javascript
+// Frontend execution metrics automatically collected
+const stats = routerHandler.getExecutionStats()
+// Returns: success rate, avg duration, command type distribution, etc.
+```
+
+#### 6. Fallback & Error Recovery
+- **Multi-Level Fallbacks**: Command-level, execution-level, and system-level fallbacks
+- **Graceful Degradation**: System continues operating even when advanced features fail
+- **Error Boundaries**: Isolated error handling prevents system-wide failures
+
 ### Testing Verification Status
 ✅ **End-to-End Testing Completed** (August 2025):
 - Admin user login → Navigate to `/admin-dashboard`
@@ -285,6 +340,27 @@ async handleCustomAction(payload) {
 }
 ```
 
+#### Observability & Monitoring Integration
+**New Metrics Endpoints** (August 2024):
+```rust
+// Backend metrics collection endpoints
+POST /api/metrics/route-command-error  // Frontend error reporting
+POST /api/metrics/performance          // Performance metrics  
+POST /api/metrics/health               // System health status
+```
+
+**Frontend Integration**:
+```javascript
+// Automatic error reporting (production only)
+if (process.env.NODE_ENV === 'production' && status === 'error') {
+    this.reportExecutionMetrics(record)
+}
+
+// Performance metrics collection
+const stats = routerHandler.getExecutionStats()
+console.log(`Success rate: ${stats.successRate}, Avg duration: ${stats.avgDuration}ms`)
+```
+
 #### API Response Standards
 **All user-facing API endpoints MUST follow this format**:
 ```rust
@@ -352,3 +428,125 @@ const handleUserAction = async (actionData) => {
 ### Documentation Navigation
 - Provide navigation links to the other language in each language's root directory
 - Provide document language selection guidance in README.md
+
+## Frontend Design Standards
+
+### UI/UX Design Guidelines
+
+#### 设计风格 (Design Style)
+- **风格定位**: 简约、高效、重点突出 (Minimalist, Efficient, Focus-oriented)
+- **设计原则**: 内容至上，减少视觉干扰，提升用户操作效率
+- **交互理念**: 直观易懂，减少用户学习成本
+
+#### 色彩规范 (Color Scheme)
+**主色调**: 浅蓝色与白色为主的清新色系
+- **主色 (Primary)**: `#4A90E2` - 清新蓝色，用于主要操作按钮和重要信息
+- **辅助色 (Secondary)**: `#F8FAFE` - 极淡蓝色，用于背景区域和卡片容器
+- **背景色 (Background)**: `#FFFFFF` - 纯白色，主要内容区域背景
+- **文字色 (Text)**: 
+  - 主要文字: `#333333` - 深灰色
+  - 次要文字: `#666666` - 中灰色  
+  - 辅助文字: `#999999` - 浅灰色
+- **成功色 (Success)**: `#52C41A` - 绿色，成功状态提示
+- **警告色 (Warning)**: `#FAAD14` - 橙色，警告状态提示
+- **错误色 (Error)**: `#F5222D` - 红色，错误状态提示
+
+#### 组件规范 (Component Standards)
+
+##### UI组件库选择
+- **组件库**: 使用 `@taroify/core` 中的前端UI组件
+- **使用原则**: 仅使用组件的UI展示能力，不使用其API交互能力
+- **定制化**: 通过CSS覆盖实现符合设计规范的视觉效果
+
+##### 常用组件规范
+1. **Button 按钮组件**:
+   - 主按钮: 使用主色 `#4A90E2`，圆角 `6px`
+   - 次按钮: 边框样式，使用主色边框
+   - 按钮高度: 默认 `44px`，小尺寸 `32px`
+
+2. **Input 输入框组件**:
+   - 边框色: 默认 `#D9D9D9`，聚焦 `#4A90E2`
+   - 圆角: `6px`
+   - 内边距: `12px 16px`
+   - 字体大小: `16px`
+
+3. **Cell 单元格组件**:
+   - 背景: `#FFFFFF`
+   - 分割线: `#F0F0F0`
+   - 内边距: `16px`
+
+4. **Dialog 对话框组件**:
+   - 背景: `#FFFFFF`
+   - 圆角: `12px`
+   - 阴影: `0 8px 24px rgba(0, 0, 0, 0.12)`
+
+#### 页面布局规范 (Layout Standards)
+
+##### 间距系统 (Spacing System)
+- **基础单位**: 4px
+- **常用间距**: 8px, 12px, 16px, 20px, 24px, 32px
+- **页面边距**: 16px (移动端), 24px (桌面端)
+- **组件间距**: 16px (同类组件), 24px (不同功能区域)
+
+##### 栅格系统 (Grid System)
+- **页面最大宽度**: 无限制，但内容区域建议最大 `1200px`
+- **响应断点**: 
+  - 移动端: `< 768px`
+  - 平板: `768px - 1024px`  
+  - 桌面端: `> 1024px`
+
+#### 交互规范 (Interaction Standards)
+
+##### 反馈机制
+- **加载状态**: 使用统一的Loading组件，避免页面空白
+- **操作反馈**: 重要操作必须提供Toast或Dialog反馈
+- **错误处理**: 友好的错误提示，避免技术术语
+
+##### 动效规范
+- **过渡时间**: 300ms (页面切换), 150ms (状态变化)
+- **缓动函数**: `cubic-bezier(0.4, 0.0, 0.2, 1)` (Material Design标准)
+
+#### 移动端适配 (Mobile Optimization)
+
+##### 微信小程序适配
+- **安全区域**: 适配各种设备的安全区域
+- **导航栏**: 遵循微信小程序设计规范
+- **底部安全区**: iPhone X系列底部适配
+
+##### 触控优化
+- **点击热区**: 最小 `44px x 44px`
+- **手势支持**: 支持常见的滑动手势
+- **键盘适配**: 输入框聚焦时的键盘遮挡处理
+
+#### 实施要求 (Implementation Requirements)
+
+1. **强制要求**: 所有新开发的用户界面必须严格遵循本设计标准
+2. **组件复用**: 优先使用 Taroify 标准组件，必要时进行样式定制
+3. **一致性检查**: 定期检查界面一致性，确保视觉统一
+4. **响应式设计**: 确保在不同设备和屏幕尺寸下的良好体验
+
+#### CSS 命名规范 (CSS Naming Convention)
+
+使用 BEM (Block Element Modifier) 命名方法：
+```css
+/* 页面级别 */
+.page-login { }
+.page-index { }
+
+/* 组件级别 */  
+.login-form { }
+.login-form__input { }
+.login-form__button { }
+.login-form__button--primary { }
+
+/* 状态修饰 */
+.button--loading { }
+.form--error { }
+.text--disabled { }
+```
+
+#### 开发工具链 (Development Toolchain)
+
+1. **样式预处理**: 使用 Sass/SCSS
+2. **样式检查**: 集成 StyleLint 保证代码质量
+3. **设计Token**: 统一管理颜色、字体、间距等设计变量

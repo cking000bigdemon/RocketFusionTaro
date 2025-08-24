@@ -123,15 +123,11 @@ pub enum RouteCommand {
         merge: Option<bool>,
     },
     
-    /// 请求支付
-    RequestPayment {
-        payment_info: PaymentInfo,
-        callback_url: String,
-    },
     
     /// 组合指令（按顺序执行多个指令）
     Sequence {
         commands: Vec<RouteCommand>,
+        stop_on_error: Option<bool>,
     },
     
     /// 条件指令（根据前端状态决定执行哪个指令）
@@ -139,6 +135,25 @@ pub enum RouteCommand {
         condition: String,
         if_true: Box<RouteCommand>,
         if_false: Option<Box<RouteCommand>>,
+    },
+    
+    /// 延迟指令（在指定时间后执行指令）
+    Delay {
+        duration_ms: u64,
+        command: Box<RouteCommand>,
+    },
+    
+    /// 并行指令（同时执行多个指令）
+    Parallel {
+        commands: Vec<RouteCommand>,
+        wait_for_all: bool,
+    },
+    
+    /// 重试指令（使用退避策略重试指令执行）
+    Retry {
+        command: Box<RouteCommand>,
+        max_attempts: u32,
+        delay_ms: u64,
     },
 }
 ```
@@ -372,6 +387,344 @@ async fn handle_payment_request(&self, request: PaymentRequest) -> Result<RouteC
                 },
             ],
         })
+    }
+}
+```
+
+## 架构增强 v2.0 (2024年8月)
+
+### 版本控制与兼容性系统
+
+架构现在支持版本化路由指令和自动回退机制：
+
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VersionedRouteCommand {
+    #[serde(default = "default_version")]
+    pub version: u32,
+    #[serde(flatten)]
+    pub command: RouteCommand,
+    pub fallback: Option<Box<VersionedRouteCommand>>,
+    #[serde(default)]
+    pub metadata: RouteCommandMetadata,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RouteCommandMetadata {
+    pub timeout_ms: Option<u64>,
+    pub priority: Option<u8>,
+    pub execution_context: HashMap<String, serde_json::Value>,
+}
+```
+
+#### 版本兼容性检查
+
+前端自动验证指令版本：
+
+```javascript
+class RouterHandler {
+    checkVersionCompatibility(serverVersion) {
+        const serverMajor = Math.floor(serverVersion / 100)
+        const clientMajor = Math.floor(ROUTE_COMMAND_VERSION / 100)
+        return serverMajor === clientMajor
+    }
+    
+    async executeVersionedCommand(versionedCommand) {
+        const { version, command, fallback } = versionedCommand
+        
+        if (!this.checkVersionCompatibility(version)) {
+            if (fallback) {
+                console.log('由于版本不兼容，执行回退指令')
+                await this.execute(fallback)
+                return
+            }
+            throw new Error(`不支持的路由指令版本: ${version}`)
+        }
+        
+        await this.executeCommand(command)
+    }
+}
+```
+
+### 增强指令类型
+
+#### 1. 延迟指令
+精确时间控制的指令执行：
+
+```rust
+RouteCommand::Delay {
+    duration_ms: 2000,
+    command: Box::new(RouteCommand::NavigateTo {
+        path: "/delayed-page".to_string(),
+        params: None,
+        replace: None,
+    }),
+}
+```
+
+#### 2. 并行指令
+同时执行多个指令：
+
+```rust
+RouteCommand::Parallel {
+    commands: vec![
+        RouteCommand::ProcessData { /* 更新用户数据 */ },
+        RouteCommand::ProcessData { /* 更新通知数据 */ },
+        RouteCommand::ProcessData { /* 更新设置数据 */ },
+    ],
+    wait_for_all: true,
+}
+```
+
+#### 3. 重试指令
+指数退避的自动重试：
+
+```rust
+RouteCommand::Retry {
+    command: Box::new(RouteCommand::NavigateTo {
+        path: "/critical-page".to_string(),
+        params: None,
+        replace: None,
+    }),
+    max_attempts: 3,
+    delay_ms: 1000,
+}
+```
+
+#### 4. 增强条件指令
+运行时条件评估与安全表达式解析：
+
+```rust
+RouteCommand::Conditional {
+    condition: "user && user.is_admin".to_string(),
+    if_true: Box::new(RouteCommand::NavigateTo {
+        path: "/admin-dashboard".to_string(),
+        params: None,
+        replace: Some(true),
+    }),
+    if_false: Some(Box::new(RouteCommand::NavigateTo {
+        path: "/user-dashboard".to_string(),
+        params: None,
+        replace: Some(true),
+    })),
+}
+```
+
+### 业务逻辑分离
+
+#### 路由指令生成器模式
+
+```rust
+pub struct RouteCommandGenerator;
+
+impl RouteCommandGenerator {
+    #[instrument(skip_all)]
+    pub fn generate_login_route_command(result: &LoginResult) -> RouteCommand {
+        info!(user_id = %result.user.id, "生成登录路由指令");
+        
+        if result.is_first_login {
+            RouteCommand::Sequence {
+                commands: vec![
+                    RouteCommand::ProcessData {
+                        data_type: "user".to_string(),
+                        data: serde_json::to_value(&result.user).unwrap(),
+                        merge: Some(false),
+                    },
+                    RouteCommand::NavigateTo {
+                        path: "/onboarding".to_string(),
+                        params: None,
+                        replace: Some(true),
+                    },
+                ],
+                stop_on_error: Some(true),
+            }
+        } else {
+            // 正常登录流程...
+        }
+    }
+}
+```
+
+#### 纯用例模式
+
+```rust
+impl AuthUseCase {
+    /// 纯业务逻辑 - 返回业务结果
+    pub async fn execute_login(&self, request: LoginRequest) -> UseCaseResult<LoginResult> {
+        // 业务逻辑实现...
+        let login_result = LoginResult::new(user, session)
+            .with_pending_tasks(pending_tasks)
+            .with_account_flags(flags);
+            
+        Ok(login_result)
+    }
+    
+    /// 路由指令生成 - 分离关注点
+    pub async fn handle_login(&self, request: LoginRequest) -> UseCaseResult<RouteCommand> {
+        match self.execute_login(request).await {
+            Ok(login_result) => {
+                Ok(RouteCommandGenerator::generate_login_route_command(&login_result))
+            }
+            Err(e) => {
+                Ok(RouteCommandGenerator::generate_error_route_command(&e.to_string(), None))
+            }
+        }
+    }
+}
+```
+
+### 全局请求拦截器
+
+前端现在自动处理所有API响应中的路由指令：
+
+```javascript
+const request = async (url, options = {}) => {
+    const response = await Taro.request(requestConfig)
+    
+    if (response.statusCode === 200) {
+        const responseData = response.data
+        
+        // 🚀 全局路由指令拦截器
+        if (responseData && typeof responseData === 'object') {
+            const routeCommand = responseData.route_command || responseData.routeCommand
+            
+            if (routeCommand) {
+                // 异步执行，不阻塞当前请求
+                setTimeout(async () => {
+                    try {
+                        const store = useStore.getState()
+                        const routerHandler = store.getRouterHandler()
+                        
+                        if (routerHandler) {
+                            await routerHandler.execute(routeCommand)
+                        }
+                    } catch (routeError) {
+                        console.error('路由指令执行失败:', routeError)
+                    }
+                }, 0)
+            }
+        }
+        
+        return responseData
+    }
+}
+```
+
+### 增强可观测性
+
+#### 执行追踪
+
+```javascript
+class RouterHandler {
+    async execute(routeCommand) {
+        const executionId = this.generateExecutionId()
+        const startTime = performance.now()
+        
+        try {
+            await this.executeCommand(routeCommand, executionId)
+            
+            const duration = performance.now() - startTime
+            this.recordExecution(executionId, routeCommand, 'success', null, { duration })
+            
+        } catch (error) {
+            const duration = performance.now() - startTime
+            this.recordExecution(executionId, routeCommand, 'error', error.message, { duration })
+            
+            // 生产环境自动错误报告
+            if (process.env.NODE_ENV === 'production') {
+                this.reportExecutionMetrics({
+                    executionId,
+                    commandType: routeCommand.type,
+                    error: error.message,
+                    duration,
+                    timestamp: new Date().toISOString()
+                })
+            }
+        }
+    }
+    
+    getExecutionStats() {
+        const total = this.executionHistory.length
+        const successful = this.executionHistory.filter(r => r.status === 'success').length
+        const failed = this.executionHistory.filter(r => r.status === 'error').length
+        
+        return {
+            total,
+            successful,
+            failed,
+            successRate: total > 0 ? (successful / total * 100).toFixed(2) + '%' : '0%',
+            avgDuration: this.calculateAverageDuration(),
+            commandTypes: this.getCommandTypeDistribution()
+        }
+    }
+}
+```
+
+#### 后端指标收集
+
+```rust
+// 新的指标端点
+#[post("/api/metrics/route-command-error", data = "<metric>")]
+pub async fn receive_route_command_error_metric(
+    metric: Json<RouteCommandErrorMetric>,
+) -> Json<ApiResponse<()>> {
+    error!(
+        execution_id = %metric.execution_id,
+        command_type = %metric.command_type,
+        error_message = %metric.error,
+        "收到前端路由指令执行错误"
+    );
+    
+    // 处理指标用于监控和告警
+    Json(ApiResponse::with_toast((), "指标已记录"))
+}
+
+#[post("/api/metrics/health")]
+pub async fn get_system_health() -> Json<ApiResponse<SystemHealthStatus>> {
+    let health_status = SystemHealthStatus {
+        status: "healthy".to_string(),
+        timestamp: chrono::Utc::now(),
+        components: vec![
+            ComponentHealth {
+                name: "route_handler".to_string(),
+                status: "healthy".to_string(),
+                details: Some("所有路由指令正常执行".to_string()),
+            },
+        ],
+        version: env!("CARGO_PKG_VERSION").to_string(),
+    };
+    
+    Json(ApiResponse::success(health_status))
+}
+```
+
+### 多级回退系统
+
+#### 指令级回退
+```rust
+VersionedRouteCommand {
+    version: 200,
+    command: RouteCommand::NavigateTo { /* 高级导航 */ },
+    fallback: Some(Box::new(VersionedRouteCommand {
+        version: 100,
+        command: RouteCommand::NavigateTo { /* 基础导航 */ },
+        fallback: None,
+    })),
+}
+```
+
+#### 执行级回退
+```javascript
+async handleExecutionError(originalCommand, error, executionId) {
+    const fallbackEntry = this.fallbackStack.find(entry => entry.executionId === executionId)
+    
+    if (fallbackEntry) {
+        console.log(`由于错误执行回退指令`)
+        try {
+            await this.execute(fallbackEntry.fallback)
+        } catch (fallbackError) {
+            this.showGenericError()
+        }
     }
 }
 ```

@@ -1,12 +1,13 @@
 use serde_json::json;
-use tracing::{info, warn, error};
+use tracing::{info, warn, error, instrument};
 
 use crate::database::DbPool;
 use crate::models::{
     auth::{LoginRequest, User, UserInfo, UserSession},
     route_command::RouteCommand,
+    business_results::{LoginResult, LogoutResult, AccountFlags},
 };
-use super::{UseCase, UseCaseError, UseCaseResult};
+use super::{UseCase, UseCaseError, UseCaseResult, route_command_generator::RouteCommandGenerator};
 
 /// 认证用例，处理用户登录相关的业务逻辑
 pub struct AuthUseCase {
@@ -18,8 +19,9 @@ impl AuthUseCase {
         Self { db_pool }
     }
 
-    /// 处理用户登录请求
-    pub async fn handle_login(&self, request: LoginRequest) -> UseCaseResult<RouteCommand> {
+    /// 处理用户登录请求 - 纯业务逻辑
+    #[instrument(skip_all, name = "execute_login")]
+    pub async fn execute_login(&self, request: LoginRequest) -> UseCaseResult<LoginResult> {
         info!("Processing login request for user: {}", request.username);
 
         // 1. 验证用户凭据
@@ -27,62 +29,92 @@ impl AuthUseCase {
             Some(user) => user,
             None => {
                 warn!("Login failed for user: {} - invalid credentials", request.username);
-                return Ok(RouteCommand::alert(
-                    "登录失败",
-                    "用户名或密码错误，请重新输入",
-                ));
+                return Err(UseCaseError::AuthenticationError("用户名或密码错误".to_string()));
             }
         };
 
         // 2. 检查用户状态
         if !user.is_active {
             warn!("Login attempt for inactive user: {}", user.username);
-            return Ok(RouteCommand::alert(
-                "账户已禁用",
-                "您的账户已被禁用，请联系管理员",
-            ));
+            return Err(UseCaseError::AuthenticationError("账户已被禁用".to_string()));
         }
 
         // 3. 创建用户会话
-        let _session = match self.create_session(&user).await {
-            Ok(session) => session,
-            Err(e) => {
-                error!("Failed to create session for user {}: {}", user.username, e);
-                return Ok(RouteCommand::alert(
-                    "系统错误",
-                    "登录过程中发生错误，请稍后重试",
-                ));
-            }
-        };
+        let session = self.create_session(&user).await.map_err(|e| {
+            error!("Failed to create session for user {}: {}", user.username, e);
+            UseCaseError::InternalError("会话创建失败".to_string())
+        })?;
 
         // 4. 更新最后登录时间
         if let Err(e) = self.update_last_login(&user).await {
             warn!("Failed to update last login time for user {}: {}", user.username, e);
         }
 
-        // 5. 决定登录后的路由操作
-        let route_command = self.determine_post_login_action(&user).await?;
+        // 5. 构建业务结果
+        let mut login_result = LoginResult::new(user.clone(), session);
+        
+        // 检查待处理任务
+        let pending_tasks = self.get_pending_tasks_count(&user).await.unwrap_or(0);
+        login_result = login_result.with_pending_tasks(pending_tasks);
+        
+        // 设置账户标记
+        let account_flags = self.build_account_flags(&user).await?;
+        login_result = login_result.with_account_flags(account_flags);
+        
+        // 检查是否需要更新密码
+        let needs_password_update = self.check_password_update_required(&user).await.unwrap_or(false);
+        login_result = login_result.with_password_update_required(needs_password_update);
 
         info!("Login successful for user: {}", user.username);
-        Ok(route_command)
+        Ok(login_result)
+    }
+
+    /// 处理用户登录请求 - 包含路由决策（保留向后兼容）
+    pub async fn handle_login(&self, request: LoginRequest) -> UseCaseResult<RouteCommand> {
+        match self.execute_login(request).await {
+            Ok(login_result) => {
+                Ok(RouteCommandGenerator::generate_login_route_command(&login_result))
+            }
+            Err(e) => {
+                let error_code = match &e {
+                    UseCaseError::AuthenticationError(_) => Some("AUTH_INVALID_CREDENTIALS"),
+                    UseCaseError::DatabaseError(_) => Some("DATABASE_ERROR"),
+                    _ => None,
+                };
+                Ok(RouteCommandGenerator::generate_error_route_command(&e.to_string(), error_code))
+            }
+        }
     }
 
     /// 验证用户凭据
+    #[instrument(skip_all, name = "authenticate_user")]
     async fn authenticate_user(&self, request: &LoginRequest) -> UseCaseResult<Option<User>> {
         use crate::database::auth::authenticate_user;
         
+        info!(username = %request.username, "Authenticating user credentials");
+        
         match authenticate_user(&self.db_pool, request).await {
-            Ok(user) => Ok(user),
+            Ok(Some(user)) => {
+                info!(user_id = %user.id, username = %user.username, "User authentication successful");
+                Ok(Some(user))
+            }
+            Ok(None) => {
+                warn!(username = %request.username, "User authentication failed: invalid credentials");
+                Ok(None)
+            }
             Err(e) => {
-                error!("Database error during authentication: {}", e);
+                error!(username = %request.username, error = %e, "Database error during authentication");
                 Err(UseCaseError::DatabaseError(e.to_string()))
             }
         }
     }
 
     /// 创建用户会话
+    #[instrument(skip_all, name = "create_session")]
     async fn create_session(&self, user: &User) -> UseCaseResult<UserSession> {
         use crate::database::auth::create_user_session;
+        
+        info!(user_id = %user.id, username = %user.username, "Creating user session");
         
         create_user_session(
             &self.db_pool,
@@ -90,87 +122,172 @@ impl AuthUseCase {
             None, // user_agent 可以后续传入
             None, // ip_address 可以后续传入
         ).await.map_err(|e| {
-            error!("Failed to create session: {}", e);
+            error!(user_id = %user.id, error = %e, "Failed to create session");
             UseCaseError::DatabaseError(e.to_string())
+        }).map(|session| {
+            info!(user_id = %user.id, session_id = %session.id, "Session created successfully");
+            session
         })
     }
 
     /// 更新最后登录时间
+    #[instrument(skip_all, name = "update_last_login")]
     async fn update_last_login(&self, user: &User) -> UseCaseResult<()> {
         use crate::database::auth::update_last_login;
         
+        info!(user_id = %user.id, "Updating last login time");
+        
         update_last_login(&self.db_pool, user.id).await.map_err(|e| {
+            error!(user_id = %user.id, error = %e, "Failed to update last login time");
             UseCaseError::DatabaseError(e.to_string())
+        }).map(|_| {
+            info!(user_id = %user.id, "Last login time updated successfully");
         })
     }
 
-    /// 决定登录后的操作
-    async fn determine_post_login_action(&self, user: &User) -> UseCaseResult<RouteCommand> {
-        // 检查是否是首次登录
-        if user.last_login_at.is_none() {
-            info!("First login detected for user: {}", user.username);
-            return Ok(RouteCommand::sequence(vec![
-                RouteCommand::process_data("user", serde_json::to_value(UserInfo::from(user.clone()))?),
-                RouteCommand::toast("欢迎使用系统！"),
-                RouteCommand::redirect_to("/welcome"),
-            ]));
-        }
-
-        // 检查是否有待处理的任务
-        if self.has_pending_tasks(user).await? {
-            return Ok(RouteCommand::confirm(
-                "待处理任务",
-                "您有未完成的任务，是否立即处理？",
-                Some(RouteCommand::redirect_to("/tasks")),
-                Some(RouteCommand::redirect_to("/home")),
-            ));
-        }
-
-        // 根据用户角色决定跳转页面
-        let redirect_path = if user.is_admin {
-            "/pages/index/index"  // 管理员也跳转到主页，可以后续添加管理功能
-        } else {
-            "/pages/index/index"  // 普通用户跳转到主页
+    /// 构建账户标记
+    #[instrument(skip_all, name = "build_account_flags")]
+    async fn build_account_flags(&self, user: &User) -> UseCaseResult<AccountFlags> {
+        info!(user_id = %user.id, "Building account flags for user");
+        // 这里可以根据实际业务逻辑来设置各种标记
+        // 目前使用简化的逻辑
+        
+        // 根据is_admin判断VIP状态（简化逻辑）
+        let is_vip = user.is_admin;
+        
+        // 检查是否为新用户（注册7天内）
+        let is_new_user = {
+            let now = chrono::Utc::now();
+            let seven_days_ago = now - chrono::Duration::days(7);
+            user.created_at > seven_days_ago
         };
-
-        // 正常登录流程
-        Ok(RouteCommand::sequence(vec![
-            RouteCommand::process_data("user", serde_json::to_value(UserInfo::from(user.clone()))?),
-            RouteCommand::toast("登录成功"),
-            RouteCommand::redirect_to(redirect_path),
-        ]))
+        
+        // 检查是否有未读通知 - 这里可以查询通知表
+        let has_unread_notifications = false; // 简化实现
+        
+        // 检查是否需要完善个人信息
+        let needs_profile_completion = user.email.is_empty() || user.full_name.is_none();
+        
+        // 简单的安全等级计算
+        let mut security_level = 1;
+        if user.full_name.is_some() { security_level += 1; }
+        if !user.email.is_empty() { security_level += 1; }
+        // 可以添加其他安全因子的判断
+        security_level = security_level.min(5);
+        
+        let flags = AccountFlags {
+            is_vip,
+            is_new_user,
+            has_unread_notifications,
+            needs_profile_completion,
+            security_level,
+        };
+        
+        info!(
+            user_id = %user.id, 
+            is_vip = %flags.is_vip,
+            is_new_user = %flags.is_new_user,
+            needs_profile_completion = %flags.needs_profile_completion,
+            security_level = %flags.security_level,
+            "Account flags built successfully"
+        );
+        
+        Ok(flags)
     }
 
-    /// 检查用户是否有待处理任务
-    async fn has_pending_tasks(&self, _user: &User) -> UseCaseResult<bool> {
+    /// 获取用户待处理任务数量
+    #[instrument(skip_all, name = "get_pending_tasks_count")]
+    async fn get_pending_tasks_count(&self, user: &User) -> UseCaseResult<u32> {
+        info!(user_id = %user.id, "Checking pending tasks count");
+        
         // 这里可以实现具体的业务逻辑
         // 例如查询数据库中的待处理订单、审批等
-        // 目前先返回 false
-        Ok(false)
+        let count = 0; // 目前先返回 0
+        
+        info!(user_id = %user.id, pending_tasks = %count, "Pending tasks count retrieved");
+        Ok(count)
+    }
+    
+    /// 检查用户是否需要更新密码
+    #[instrument(skip_all, name = "check_password_update_required")]
+    async fn check_password_update_required(&self, user: &User) -> UseCaseResult<bool> {
+        info!(user_id = %user.id, username = %user.username, "Checking password update requirement");
+        
+        // 检查密码是否过期或者是默认密码
+        // 这里可以实现具体的密码策略逻辑
+        
+        // 如果是首次登录且使用默认密码，建议更新
+        let needs_update = user.last_login_at.is_none() && user.username == "admin";
+        
+        if needs_update {
+            info!(user_id = %user.id, "Password update required: first-time admin login");
+        } else {
+            info!(user_id = %user.id, "Password update not required");
+        }
+        
+        Ok(needs_update)
     }
 
-    /// 处理用户登出
-    pub async fn handle_logout(&self, session_token: &str) -> UseCaseResult<RouteCommand> {
+    /// 执行用户登出 - 纯业务逻辑
+    #[instrument(skip_all, name = "execute_logout")]
+    pub async fn execute_logout(&self, session_token: &str, user_id: uuid::Uuid) -> UseCaseResult<LogoutResult> {
         use crate::database::auth::logout_session;
         
-        match logout_session(&self.db_pool, session_token).await {
+        info!(user_id = %user_id, "Processing logout request");
+        
+        // 检查是否有未保存的数据
+        let has_unsaved_data = self.check_unsaved_data(user_id).await.unwrap_or(false);
+        
+        // 尝试销毁会话
+        let session_destroyed = match logout_session(&self.db_pool, session_token).await {
             Ok(_) => {
-                info!("User logged out successfully");
-                Ok(RouteCommand::sequence(vec![
-                    RouteCommand::process_data("user", json!(null)),
-                    RouteCommand::toast("已退出登录"),
-                    RouteCommand::redirect_to("/login"),
-                ]))
+                info!(user_id = %user_id, "Session destroyed successfully");
+                true
             }
             Err(e) => {
-                warn!("Failed to logout session: {}", e);
+                warn!(user_id = %user_id, error = %e, "Failed to destroy session");
+                false
+            }
+        };
+        
+        Ok(LogoutResult {
+            user_id,
+            session_destroyed,
+            has_unsaved_data,
+        })
+    }
+    
+    /// 处理用户登出 - 包含路由决策（保留向后兼容）
+    pub async fn handle_logout(&self, session_token: &str) -> UseCaseResult<RouteCommand> {
+        // 这里需要获取用户ID，简化处理使用固定值
+        // 在实际实现中应该从session_token解析或查询获得user_id
+        let user_id = uuid::Uuid::new_v4(); // 简化处理
+        
+        match self.execute_logout(session_token, user_id).await {
+            Ok(logout_result) => {
+                Ok(RouteCommandGenerator::generate_logout_route_command(&logout_result))
+            }
+            Err(e) => {
+                warn!(error = %e, "Logout failed, but clearing client state");
                 // 即使后端登出失败，也要清理前端状态
                 Ok(RouteCommand::sequence(vec![
                     RouteCommand::process_data("user", json!(null)),
-                    RouteCommand::redirect_to("/login"),
+                    RouteCommand::redirect_to("/pages/login/index"),
                 ]))
             }
         }
+    }
+    
+    /// 检查用户是否有未保存的数据
+    #[instrument(skip_all, name = "check_unsaved_data")]
+    async fn check_unsaved_data(&self, user_id: uuid::Uuid) -> UseCaseResult<bool> {
+        info!(user_id = %user_id, "Checking for unsaved data");
+        
+        // 这里可以实现检查用户是否有未保存的草稿、表单等
+        let has_unsaved = false; // 目前简化处理
+        
+        info!(user_id = %user_id, has_unsaved_data = %has_unsaved, "Unsaved data check completed");
+        Ok(has_unsaved)
     }
 
     /// 获取当前用户信息

@@ -1,103 +1,406 @@
-.index {
-  padding: 20px;
-  background-color: #f8f9fa;
+/* Index页面样式 - 简洁实用设计 */
+.page-index {
   min-height: 100vh;
+  background: #F8FAFE;
+  padding: 16px;
 }
 
-.title {
-  font-size: 28px;
-  font-weight: bold;
-  text-align: center;
-  margin-bottom: 20px;
-  color: #2c3e50;
+/* 加载状态容器 */
+.loading-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #F8FAFE;
 }
 
-.subtitle {
-  font-size: 16px;
-  text-align: center;
-  margin-bottom: 20px;
-  color: #7f8c8d;
-}
-
-.button {
-  background-color: #3498db;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 12px 24px;
+.loading-text {
+  margin-top: 16px;
   font-size: 14px;
-  margin: 10px auto;
-  width: 240px;
-  display: block;
+  color: #666666;
 }
 
-.button.primary {
-  background-color: #e74c3c;
-}
-
-.button:hover {
-  opacity: 0.8;
-}
-
-.section {
-  margin-bottom: 30px;
-  background-color: white;
+/* 头部用户信息区域 */
+.index-header {
+  background: #FFFFFF;
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #F0F0F0;
 }
 
-.section-title {
-  font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 15px;
-  color: #34495e;
-  text-align: center;
-  border-bottom: 2px solid #ecf0f1;
-  padding-bottom: 10px;
+.user-avatar {
+  font-size: 36px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #F8FAFE;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16px;
+  border: 2px solid #4A90E2;
 }
 
 .user-info {
-  background-color: #ecf0f1;
-  border-radius: 8px;
-  padding: 15px;
-  margin-top: 15px;
+  flex: 1;
 }
 
-.user-info text {
+.user-name {
   display: block;
-  margin-bottom: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333333;
+  margin-bottom: 4px;
+}
+
+.user-role {
+  display: block;
   font-size: 14px;
-  color: #2c3e50;
+  color: #666666;
+  background: #F8FAFE;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
 }
 
-.user-item {
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 10px;
-  border-left: 4px solid #3498db;
+/* 内容容器 */
+.content-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.user-item text {
-  display: block;
-  margin-bottom: 5px;
-  font-size: 13px;
-  color: #2c3e50;
+/* 模块组样式定制 */
+.module-group {
+  background: #FFFFFF;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #F0F0F0;
 }
 
-.input {
-  width: 100%;
-  padding: 12px;
-  margin-bottom: 15px;
-  border: 1px solid #bdc3c7;
+.module-title {
+  background: #F8FAFE;
+  color: #4A90E2;
+  font-weight: 600;
+  font-size: 16px;
+  padding: 12px 16px;
+  margin: 0;
+  border-bottom: 1px solid #F0F0F0;
+}
+
+.module-group .taroify-cell-group__title {
+  background: #F8FAFE;
+  color: #4A90E2;
+  font-weight: 600;
+  font-size: 16px;
+  padding: 12px 16px;
+  margin: 0;
+  border-bottom: 1px solid #F0F0F0;
+}
+
+.module-group .taroify-cell {
+  padding: 16px;
+  border-bottom: 1px solid #F5F5F5;
+}
+
+.module-group .taroify-cell:last-child {
+  border-bottom: none;
+}
+
+/* 计数器功能样式 */
+.counter-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.counter-label {
+  font-size: 16px;
+  color: #333333;
+  font-weight: 500;
+}
+
+.counter-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #4A90E2;
+}
+
+.counter-badge .taroify-badge {
+  background: #4A90E2 !important;
+}
+
+/* 按钮组定制 */
+.module-group .taroify-space {
+  justify-content: flex-start;
+}
+
+.module-group .taroify-button {
+  border-radius: 6px !important;
+  font-size: 14px !important;
+  padding: 6px 16px !important;
+  height: auto !important;
+  font-weight: 500 !important;
+}
+
+/* 主色按钮 */
+.module-group .taroify-button--primary {
+  background: #4A90E2 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #4A90E2 !important;
+}
+
+.module-group .taroify-button--primary:hover {
+  background: #3A7BD5 !important;
+}
+
+/* 边框按钮 */
+.module-group .taroify-button--outlined {
+  background: transparent !important;
+  color: #4A90E2 !important;
+  border: 1px solid #4A90E2 !important;
+}
+
+.module-group .taroify-button--outlined:hover {
+  background: #F8FAFE !important;
+}
+
+/* 警告按钮 */
+.module-group .taroify-button--warning {
+  background: #FAAD14 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #FAAD14 !important;
+}
+
+/* 用户数据管理样式 */
+.data-count {
+  font-size: 14px;
+  color: #666666;
+}
+
+.data-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.data-name {
+  font-size: 16px;
+  color: #333333;
+  font-weight: 500;
+}
+
+.data-email {
+  font-size: 14px;
+  color: #666666;
+}
+
+.no-data {
+  font-size: 14px;
+  color: #999999;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.more-data {
+  font-size: 14px;
+  color: #4A90E2;
+  text-align: center;
+}
+
+/* Badge 组件定制 */
+.taroify-badge--success {
+  background: #52C41A !important;
+}
+
+.taroify-badge--danger {
+  background: #F5222D !important;
+}
+
+.taroify-badge--warning {
+  background: #FAAD14 !important;
+}
+
+/* 系统状态样式 */
+.module-group .taroify-cell[clickable] {
+  cursor: pointer;
+}
+
+.module-group .taroify-cell[clickable]:hover {
+  background: #FAFBFC;
+}
+
+/* 对话框样式定制 */
+.add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.form-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.form-label {
+  font-size: 14px;
+  color: #333333;
+  font-weight: 500;
+  min-width: 50px;
+  text-align: right;
+}
+
+.form-input {
+  flex: 1;
+  height: 40px;
+  border: 1px solid #D9D9D9;
   border-radius: 6px;
+  padding: 0 12px;
   font-size: 14px;
-  background-color: #fff;
-  box-sizing: border-box;
+  color: #333333;
+  background: #FFFFFF;
+  transition: border-color 150ms ease;
 }
 
-.input:focus {
-  border-color: #3498db;
+.form-input:focus {
+  border-color: #4A90E2;
   outline: none;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.form-input::placeholder {
+  color: #999999;
+}
+
+/* Dialog 组件定制 */
+.taroify-dialog {
+  border-radius: 12px !important;
+}
+
+.taroify-dialog__header {
+  background: #F8FAFE !important;
+  color: #4A90E2 !important;
+  font-weight: 600 !important;
+}
+
+.taroify-dialog__actions .taroify-button {
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+}
+
+.taroify-dialog__actions .taroify-button--primary {
+  background: #4A90E2 !important;
+}
+
+.taroify-dialog__actions .taroify-button--outlined {
+  color: #666666 !important;
+  border-color: #D9D9D9 !important;
+}
+
+/* Toast 定制 */
+.taroify-toast {
+  border-radius: 8px !important;
+}
+
+.taroify-toast--success {
+  background: #52C41A !important;
+}
+
+.taroify-toast--warning {
+  background: #FAAD14 !important;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .page-index {
+    padding: 12px;
+  }
+  
+  .index-header {
+    padding: 16px;
+  }
+  
+  .user-avatar {
+    width: 48px;
+    height: 48px;
+    font-size: 24px;
+  }
+  
+  .user-name {
+    font-size: 16px;
+  }
+}
+
+/* 微信小程序适配 */
+@media screen and (max-width: 414px) {
+  .content-container {
+    gap: 12px;
+  }
+  
+  .module-group .taroify-cell {
+    padding: 12px;
+  }
+  
+  .form-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .form-label {
+    min-width: auto;
+    text-align: left;
+  }
+  
+  .form-input {
+    width: 100%;
+  }
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F5F5F5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D9D9D9;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4A90E2;
+}
+
+/* 动画效果 */
+.module-group {
+  animation: slideInUp 300ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  animation-fill-mode: both;
+}
+
+.module-group:nth-child(1) { animation-delay: 0ms; }
+.module-group:nth-child(2) { animation-delay: 100ms; }
+.module-group:nth-child(3) { animation-delay: 200ms; }
+.module-group:nth-child(4) { animation-delay: 300ms; }
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

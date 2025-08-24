@@ -8,7 +8,7 @@ const getBaseURL = () => {
   return 'http://localhost:8000'
 }
 
-// 统一的网络请求方法
+// 全局路由指令拦截器 - 统一的网络请求方法
 const request = async (url, options = {}) => {
   const baseURL = getBaseURL()
   const fullURL = `${baseURL}${url}`
@@ -29,37 +29,97 @@ const request = async (url, options = {}) => {
     ...options
   }
   
-  // 开发环境日志（生产环境可移除）
+  // 开发环境日志
   if (process.env.NODE_ENV === 'development') {
-    console.log('API Request:', requestConfig.method, fullURL)
+    console.group(`📡 API Request: ${requestConfig.method} ${fullURL}`)
+    console.log('Request Config:', requestConfig)
+    console.time('Request Duration')
   }
   
   try {
     const response = await Taro.request(requestConfig)
     
-    // 开发环境日志
-    if (process.env.NODE_ENV === 'development' && response.statusCode !== 200) {
-      console.log('API Response:', response.statusCode, fullURL)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Raw Response:', response)
+      console.timeEnd('Request Duration')
+      console.groupEnd()
     }
     
     if (response.statusCode === 200) {
-      return response.data
+      const responseData = response.data
+      
+      // 🚀 全局路由指令拦截器核心逻辑
+      if (responseData && typeof responseData === 'object') {
+        // 检查响应中是否包含路由指令
+        const routeCommand = responseData.route_command || responseData.routeCommand
+        
+        if (routeCommand) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🎯 Route command detected in response:', routeCommand)
+          }
+          
+          // 异步执行路由指令，不阻塞当前请求的返回
+          setTimeout(async () => {
+            try {
+              // 获取当前的路由处理器实例
+              const store = useStore.getState()
+              const routerHandler = store.getRouterHandler()
+              
+              if (routerHandler) {
+                await routerHandler.execute(routeCommand)
+              } else {
+                console.warn('RouterHandler not available, cannot execute route command')
+              }
+            } catch (routeError) {
+              console.error('Failed to execute route command:', routeError)
+              // 显示通用错误提示
+              Taro.showToast({
+                title: '操作失败',
+                icon: 'error',
+                duration: 2000
+              })
+            }
+          }, 0)
+        }
+      }
+      
+      return responseData
     } else {
-      // 创建包含详细信息的错误
+      // HTTP错误处理
       const errorMessage = `请求失败 - 状态码: ${response.statusCode}, URL: ${fullURL}`
-      console.error('HTTP Error:', response.statusCode, fullURL)
+      console.error('HTTP Error:', response.statusCode, fullURL, response.data)
+      
+      // 检查错误响应中是否有路由指令
+      if (response.data && response.data.route_command) {
+        setTimeout(async () => {
+          try {
+            const store = useStore.getState()
+            const routerHandler = store.getRouterHandler()
+            if (routerHandler) {
+              await routerHandler.execute(response.data.route_command)
+            }
+          } catch (routeError) {
+            console.error('Failed to execute error route command:', routeError)
+          }
+        }, 0)
+      }
+      
       throw new Error(errorMessage)
     }
   } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Request failed:', error)
+      console.timeEnd('Request Duration')
+      console.groupEnd()
+    }
+    
     // 区分网络错误和HTTP错误
     if (error.errMsg) {
       // 这是Taro.request的网络错误
       console.error('Network Error:', error.errMsg)
-      
       throw new Error(`网络连接失败: ${error.errMsg}`)
     } else {
-      // 这是我们抛出的HTTP状态码错误
-      console.error('Request Error:', error)
+      // 这是我们抛出的HTTP状态码错误或其他错误
       throw error
     }
   }
@@ -102,7 +162,7 @@ export const useStore = create((set, get) => {
       return routerHandler
     },
 
-    // 执行路由指令的统一方法
+    // 执行路由指令的统一方法（已被全局拦截器取代，保留兼容性）
     async executeRouteCommand(routeCommand) {
       const handler = get().initRouterHandler()
       if (routeCommand) {
@@ -110,9 +170,8 @@ export const useStore = create((set, get) => {
       }
     },
     
-    // 用户登录 - 新的后端驱动实现
+    // 用户登录 - 使用全局拦截器的简化版本
     login: async (credentials) => {
-      // 开始登录流程
       set({ loading: true })
       
       try {
@@ -121,22 +180,19 @@ export const useStore = create((set, get) => {
           data: credentials
         })
         
-        // 登录响应成功
-        
         if (data && data.code === 200) {
-          // 处理传统的会话数据（向后兼容）
+          // 处理会话数据（向后兼容）
           if (data.data && data.data.session_token) {
-            // 保存会话 token
             Taro.setStorageSync('session_token', data.data.session_token)
           }
           
-          // 执行路由指令（新功能）
-          if (data.route_command) {
-            // 执行路由指令
-            await get().executeRouteCommand(data.route_command)
-          } else {
-            // 如果没有路由指令，使用传统方式处理
-            set({ user: data.data.user })
+          // 注意：路由指令现在由全局拦截器自动处理
+          // 这里只处理纯数据响应（没有路由指令的情况）
+          if (!data.route_command) {
+            // 传统方式处理：直接设置用户数据
+            if (data.data && data.data.user) {
+              set({ user: data.data.user })
+            }
             Taro.showToast({
               title: '登录成功',
               icon: 'success'
@@ -144,8 +200,7 @@ export const useStore = create((set, get) => {
           }
           
           set({ loading: false })
-          // 登录流程完成
-          return data.data
+          return data
         } else {
           const errorMsg = (data && data.message) || '登录失败：服务器返回异常数据'
           console.error('Login failed - Invalid response:', data)
@@ -155,35 +210,35 @@ export const useStore = create((set, get) => {
         console.error('Login failed:', error.message)
         set({ loading: false })
         
-        // 显示错误信息
-        let errorMessage = '登录失败'
-        if (error.message.includes('网络连接失败')) {
-          errorMessage = '网络连接失败，请检查网络设置'
-        } else if (error.message.includes('状态码')) {
-          errorMessage = '服务器连接异常'
-        } else {
-          errorMessage = error.message || '未知错误'
+        // 显示错误信息（仅当全局拦截器没有处理时）
+        if (!error.handled) {
+          let errorMessage = '登录失败'
+          if (error.message.includes('网络连接失败')) {
+            errorMessage = '网络连接失败，请检查网络设置'
+          } else if (error.message.includes('状态码')) {
+            errorMessage = '服务器连接异常'
+          } else {
+            errorMessage = error.message || '未知错误'
+          }
+          
+          Taro.showToast({
+            title: errorMessage,
+            icon: 'error',
+            duration: 3000
+          })
         }
-        
-        Taro.showToast({
-          title: errorMessage,
-          icon: 'error',
-          duration: 3000
-        })
         throw error
       }
     },
 
-    // 用户登出 - 新的后端驱动实现
+    // 用户登出 - 使用全局拦截器的简化版本
     logout: async () => {
       try {
         const data = await request('/api/auth/logout', { method: 'POST' })
         
-        // 执行路由指令
-        if (data.route_command) {
-          await get().executeRouteCommand(data.route_command)
-        } else {
-          // 传统方式处理
+        // 注意：路由指令现在由全局拦截器自动处理
+        // 这里只处理没有路由指令的情况
+        if (!data.route_command) {
           set({ user: null })
           Taro.removeStorageSync('session_token')
           Taro.showToast({

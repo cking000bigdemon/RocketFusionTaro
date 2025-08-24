@@ -61,6 +61,48 @@ cargo watch -x run  # 需要安装 cargo-watch
 cargo run
 ```
 
+#### 1.5. 后端驱动路由开发 (v2.0)
+
+系统现在使用具有版本控制的高级后端驱动路由：
+
+```bash
+# 启用路由指令的结构化日志
+export RUST_LOG=info,rocket_taro_server::use_cases=debug
+
+# 启动带可观测性功能的服务
+cargo run --features observability
+```
+
+**路由指令开发工作流：**
+
+1. **在用例中定义业务逻辑**：
+```rust
+// src/use_cases/example_use_case.rs
+pub async fn handle_user_action(&self, request: ActionRequest) -> UseCaseResult<RouteCommand> {
+    // 业务逻辑实现
+    let result = self.execute_business_logic(request).await?;
+    
+    // 生成适当的路由指令
+    Ok(RouteCommandGenerator::generate_action_command(&result))
+}
+```
+
+2. **生成支持版本的路由指令**：
+```rust
+// 使用 RouteCommandGenerator 生成一致的指令
+RouteCommandGenerator::generate_versioned_command(
+    &business_result,
+    client_version,
+    Some(fallback_command)
+)
+```
+
+3. **在前端测试路由指令执行**：
+```bash
+# 前端会自动执行来自API响应的路由指令
+# 在开发模式下查看浏览器控制台的执行日志
+```
+
 #### 2. 启动前端开发服务器
 ```bash
 # 在新终端窗口
@@ -71,6 +113,26 @@ npm run dev:h5
 
 # 微信小程序开发
 npm run dev:weapp
+```
+
+**前端路由指令开发：**
+
+前端现在具有带可观测性的高级 RouterHandler：
+
+```javascript
+// 在开发中检查 RouterHandler 执行统计
+const stats = routerHandler.getExecutionStats()
+console.log('路由处理器性能:', {
+    successRate: stats.successRate,
+    avgDuration: `${stats.avgDuration}ms`,
+    commandTypes: stats.commandTypes
+})
+
+// 导出执行历史用于调试
+routerHandler.exportExecutionHistory() // 下载 JSON 文件
+
+// 测试错误处理
+routerHandler.simulateError('NavigateTo') // 模拟指令执行错误
 ```
 
 #### 3. 访问应用
@@ -97,8 +159,51 @@ npm run dev:weapp
 # 启用详细日志
 ROCKET_LOG=debug cargo run
 
+# 启用路由指令调试 (v2.0)
+export RUST_LOG=rocket_taro_server::use_cases=debug,rocket_taro_server::models::route_command=trace
+
+# 启用可观测性追踪
+export RUST_LOG=info,rocket_taro_server=debug,tracing=info
+
 # 使用断点调试（VS Code）
 # 安装 rust-analyzer 插件
+```
+
+#### 1.5. 路由指令调试 (v2.0)
+
+调试路由指令生成和执行：
+
+```bash
+# 启用带执行ID的结构化日志
+export RUST_LOG="rocket_taro_server::use_cases=debug,rocket_taro_server::routes=info"
+
+# 检查路由指令生成日志
+tail -f /var/log/app.log | grep "route_command"
+
+# 监控路由指令错误指标
+curl -X POST http://localhost:8000/api/metrics/health | jq '.data.components[] | select(.name == "route_handler")'
+```
+
+**调试路由指令问题：**
+
+```rust
+// 在用例中添加调试日志
+#[instrument(skip_all, name = "debug_login_flow")]
+pub async fn handle_login(&self, request: LoginRequest) -> UseCaseResult<RouteCommand> {
+    debug!("收到用户登录请求: {}", request.username);
+    
+    match self.execute_login(request).await {
+        Ok(login_result) => {
+            let command = RouteCommandGenerator::generate_login_route_command(&login_result);
+            debug!("生成路由指令: {:?}", command);
+            Ok(command)
+        }
+        Err(e) => {
+            error!("登录失败: {}", e);
+            Ok(RouteCommandGenerator::generate_error_route_command(&e.to_string(), None))
+        }
+    }
+}
 ```
 
 #### 前端调试
@@ -108,6 +213,92 @@ npm run dev:h5 -- --verbose
 
 # 使用浏览器开发者工具
 # React Developer Tools 插件
+```
+
+#### 2.5. 路由指令调试 (v2.0)
+
+调试前端路由指令执行：
+
+```javascript
+// 在开发中启用路由指令调试
+if (process.env.NODE_ENV === 'development') {
+    // 记录所有路由指令执行
+    const originalExecute = routerHandler.execute
+    routerHandler.execute = async function(command) {
+        console.group(`🚀 执行路由指令: ${command.type}`)
+        console.log('指令负载:', command.payload)
+        console.time('执行时间')
+        
+        try {
+            const result = await originalExecute.call(this, command)
+            console.log('✅ 指令执行成功')
+            return result
+        } catch (error) {
+            console.error('❌ 指令执行失败:', error)
+            throw error
+        } finally {
+            console.timeEnd('执行时间')
+            console.groupEnd()
+        }
+    }
+}
+
+// 调试路由处理器统计
+console.log('📊 路由处理器统计:', routerHandler.getExecutionStats())
+
+// 监控执行历史
+setInterval(() => {
+    const history = routerHandler.executionHistory
+    console.log(`已执行路由指令: ${history.length}`)
+    
+    const recentErrors = history.filter(h => 
+        h.status === 'error' && 
+        Date.now() - new Date(h.timestamp).getTime() < 60000 // 最近一分钟
+    )
+    
+    if (recentErrors.length > 0) {
+        console.warn(`最近错误: ${recentErrors.length}`)
+        console.table(recentErrors)
+    }
+}, 30000) // 每30秒
+```
+
+**调试版本兼容性问题：**
+
+```javascript
+// 检查版本兼容性
+const checkCompatibility = (serverVersion) => {
+    const compatible = routerHandler.checkVersionCompatibility(serverVersion)
+    console.log(`版本兼容性检查:`, {
+        clientVersion: routerHandler.SUPPORTED_VERSION,
+        serverVersion,
+        compatible
+    })
+    
+    if (!compatible) {
+        console.warn('检测到版本不兼容!')
+        console.log('回退使用统计:', routerHandler.fallbackStack)
+    }
+}
+
+// 测试回退机制
+const testFallback = async () => {
+    const versionedCommand = {
+        version: 999, // 故意不支持的版本
+        command: { type: 'NavigateTo', payload: { path: '/test' } },
+        fallback: {
+            version: 200,
+            command: { type: 'NavigateTo', payload: { path: '/fallback' } }
+        }
+    }
+    
+    try {
+        await routerHandler.executeVersionedCommand(versionedCommand)
+        console.log('✅ 回退机制工作正常')
+    } catch (error) {
+        console.error('❌ 回退机制失败:', error)
+    }
+}
 ```
 
 ## 构建和测试
@@ -156,6 +347,66 @@ cargo test test_user_routes
 cargo test --test integration_tests
 ```
 
+#### 路由指令测试 (v2.0)
+
+测试路由指令生成和版本兼容性：
+
+```rust
+#[cfg(test)]
+mod route_command_tests {
+    use super::*;
+    use crate::models::route_command::*;
+    
+    #[test]
+    fn test_version_compatibility_checking() {
+        let handler = RouterHandler::new();
+        
+        // 测试主版本兼容性
+        assert!(handler.check_version_compatibility(200)); // v2.0.x
+        assert!(!handler.check_version_compatibility(300)); // v3.0.x
+    }
+    
+    #[tokio::test]
+    async fn test_login_command_generation() {
+        let use_case = AuthUseCase::new();
+        let request = LoginRequest { 
+            username: "test".to_string(), 
+            password: "test".to_string() 
+        };
+        
+        let command = use_case.handle_login(request).await.unwrap();
+        assert!(matches!(command, RouteCommand::Sequence { .. }));
+    }
+    
+    #[tokio::test]
+    async fn test_fallback_command_execution() {
+        let versioned_command = VersionedRouteCommand {
+            version: 300, // 不支持的版本
+            command: RouteCommand::NavigateTo {
+                path: "/advanced-page".to_string(),
+                params: None,
+                replace: None,
+            },
+            fallback: Some(Box::new(VersionedRouteCommand {
+                version: 200,
+                command: RouteCommand::NavigateTo {
+                    path: "/basic-page".to_string(),
+                    params: None,
+                    replace: None,
+                },
+                fallback: None,
+                metadata: RouteCommandMetadata::default(),
+            })),
+            metadata: RouteCommandMetadata::default(),
+        };
+        
+        // 应该为不支持的版本执行回退指令
+        let result = handler.execute_versioned_command(versioned_command).await;
+        assert!(result.is_ok());
+    }
+}
+```
+
 #### 前端测试
 ```bash
 cd frontend
@@ -165,6 +416,128 @@ npm test
 
 # E2E 测试（如配置）
 npm run test:e2e
+```
+
+#### 路由处理器测试 (v2.0)
+
+测试 RouterHandler 功能和指令执行：
+
+```javascript
+import { RouterHandler } from '../utils/routerHandler'
+
+describe('RouterHandler', () => {
+  let routerHandler
+  let mockStore
+  
+  beforeEach(() => {
+    mockStore = {
+      setUser: jest.fn(),
+      updateUser: jest.fn(),
+      setUserList: jest.fn()
+    }
+    routerHandler = new RouterHandler(mockStore)
+  })
+  
+  test('执行 NavigateTo 指令', async () => {
+    const command = {
+      type: 'NavigateTo',
+      payload: { path: '/home', params: { welcome: true }, replace: true }
+    }
+    
+    // 模拟 Taro 导航
+    const mockRedirectTo = jest.fn().mockResolvedValue(true)
+    global.Taro = { redirectTo: mockRedirectTo }
+    
+    await routerHandler.execute(command)
+    expect(mockRedirectTo).toHaveBeenCalledWith({ url: '/home?welcome=true' })
+  })
+  
+  test('处理带合并的 ProcessData 指令', async () => {
+    const command = {
+      type: 'ProcessData',
+      payload: { 
+        data_type: 'user', 
+        data: { name: 'John' }, 
+        merge: true 
+      }
+    }
+    
+    await routerHandler.execute(command)
+    expect(mockStore.updateUser).toHaveBeenCalledWith({ name: 'John' })
+  })
+  
+  test('按顺序执行 Sequence 指令', async () => {
+    const command = {
+      type: 'Sequence',
+      payload: {
+        commands: [
+          { type: 'ProcessData', payload: { data_type: 'user', data: { id: 1 } } },
+          { type: 'NavigateTo', payload: { path: '/dashboard' } }
+        ]
+      }
+    }
+    
+    const executeSpy = jest.spyOn(routerHandler, 'execute')
+    await routerHandler.execute(command)
+    
+    expect(executeSpy).toHaveBeenCalledTimes(3) // 原始 + 2个子指令
+  })
+  
+  test('版本兼容性检查', () => {
+    // 测试版本兼容性逻辑
+    expect(routerHandler.checkVersionCompatibility(200)).toBe(true)  // 相同主版本
+    expect(routerHandler.checkVersionCompatibility(210)).toBe(true)  // 较新次版本
+    expect(routerHandler.checkVersionCompatibility(190)).toBe(false) // 较旧次版本
+    expect(routerHandler.checkVersionCompatibility(300)).toBe(false) // 不同主版本
+  })
+  
+  test('版本不匹配时执行回退指令', async () => {
+    const versionedCommand = {
+      version: 300, // 不支持的版本
+      command: { type: 'NavigateTo', payload: { path: '/advanced' } },
+      fallback: {
+        version: 200,
+        command: { type: 'NavigateTo', payload: { path: '/basic' } }
+      }
+    }
+    
+    const mockNavigateTo = jest.fn().mockResolvedValue(true)
+    global.Taro = { navigateTo: mockNavigateTo }
+    
+    await routerHandler.executeVersionedCommand(versionedCommand)
+    expect(mockNavigateTo).toHaveBeenCalledWith({ url: '/basic' })
+  })
+  
+  test('执行统计跟踪', async () => {
+    // 执行一些指令
+    await routerHandler.execute({ type: 'NavigateTo', payload: { path: '/test1' } })
+    await routerHandler.execute({ type: 'ProcessData', payload: { data_type: 'user', data: {} } })
+    
+    const stats = routerHandler.getExecutionStats()
+    expect(stats.total).toBe(2)
+    expect(stats.successful).toBe(2)
+    expect(stats.successRate).toBe('100.00%')
+    expect(stats.commandTypes).toHaveProperty('NavigateTo', 1)
+    expect(stats.commandTypes).toHaveProperty('ProcessData', 1)
+  })
+})
+
+// 性能测试
+describe('RouterHandler 性能', () => {
+  test('性能测试执行', async () => {
+    const routerHandler = new RouterHandler(mockStore)
+    
+    // 模拟成功执行
+    jest.spyOn(routerHandler, 'executeCommand').mockResolvedValue(true)
+    
+    const results = await routerHandler.performanceTest(10)
+    
+    expect(results).toHaveProperty('avg')
+    expect(results).toHaveProperty('min')
+    expect(results).toHaveProperty('max')
+    expect(results.results).toHaveLength(10)
+  })
+})
 ```
 
 ## 项目配置

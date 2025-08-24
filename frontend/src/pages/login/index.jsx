@@ -1,7 +1,7 @@
-import { View, Text, Input, Button } from '@tarojs/components'
-import { useState } from 'react'
+import { View, Text } from '@tarojs/components'
+import { Button, Field, Cell, Space, Toast } from '@taroify/core'
+import { useState, useEffect } from 'react'
 import { useStore } from '../../stores/app'
-import Taro from '@tarojs/taro'
 import './index.css'
 
 export default function Login() {
@@ -19,41 +19,47 @@ export default function Login() {
     }))
   }
 
-  const handleSubmit = async () => {
-    // 验证表单
+  const validateForm = () => {
     if (!formData.username || !formData.password) {
-      Taro.showToast({
-        title: '请填写完整信息',
-        icon: 'error',
+      Toast.open({
+        message: '请填写完整信息',
+        type: 'warning',
         duration: 2000
       })
-      return
+      return false
     }
 
     if (formData.username.length < 3) {
-      Taro.showToast({
-        title: '用户名至少3个字符',
-        icon: 'error',
+      Toast.open({
+        message: '用户名至少3个字符',
+        type: 'warning',
         duration: 2000
       })
-      return
+      return false
     }
 
     if (formData.password.length < 6) {
-      Taro.showToast({
-        title: '密码至少6个字符',
-        icon: 'error',
+      Toast.open({
+        message: '密码至少6个字符',
+        type: 'warning',
         duration: 2000
       })
+      return false
+    }
+
+    return true
+  }
+
+  const handleSubmit = async () => {
+    if (!validateForm()) {
       return
     }
 
     try {
+      // 调用登录接口，后端控制路由将自动处理跳转
       await login(formData)
-      // 登录成功后的跳转由路由指令处理，这里不需要手动跳转
-      // 登录请求已发送
     } catch (error) {
-      // 错误处理已在store中完成，这里只记录日志
+      // 错误处理已在store和全局拦截器中完成
       console.error('Login failed:', error)
     }
   }
@@ -62,58 +68,63 @@ export default function Login() {
     setFormData({ username, password })
   }
 
+  // 自动填充演示
+  useEffect(() => {
+    // 开发环境下可以预填充测试账号
+    if (process.env.NODE_ENV === 'development') {
+      // 可选：预填充admin账号
+      // setFormData({ username: 'admin', password: 'password' })
+    }
+  }, [])
+
   return (
-    <View className='login-container'>
-      {/* 背景装饰 */}
-      <View className='login-bg'>
-        <View className='bg-circle bg-circle-1'></View>
-        <View className='bg-circle bg-circle-2'></View>
-        <View className='bg-circle bg-circle-3'></View>
+    <View className='page-login'>
+      {/* 头部区域 */}
+      <View className='login-header'>
+        <View className='logo-container'>
+          <View className='logo-icon'>🚀</View>
+          <Text className='app-title'>Rocket Taro</Text>
+          <Text className='app-subtitle'>后端驱动路由系统</Text>
+        </View>
       </View>
 
       {/* 登录表单 */}
-      <View className='login-content'>
-        {/* 头部 */}
-        <View className='login-header'>
-          <Text className='login-title'>欢迎回来</Text>
-          <Text className='login-subtitle'>请登录您的账户</Text>
+      <View className='login-form-container'>
+        <View className='form-title'>
+          <Text className='title-main'>欢迎回来</Text>
+          <Text className='title-sub'>请登录您的账户</Text>
         </View>
 
-        {/* 表单区域 */}
         <View className='login-form'>
-          <View className='form-group'>
-            <View className='input-wrapper'>
-              <Text className='input-label'>用户名</Text>
-              <Input
-                className='form-input'
-                type='text'
-                placeholder='请输入用户名'
-                value={formData.username}
-                onInput={(e) => handleInputChange('username', e.detail.value)}
-                disabled={loading}
-              />
-            </View>
-          </View>
+          <Cell>
+            <Field
+              label='用户名'
+              placeholder='请输入用户名'
+              value={formData.username}
+              onChange={(value) => handleInputChange('username', value)}
+              disabled={loading}
+            />
+          </Cell>
+          <Cell>
+            <Field
+              label='密码'
+              type='password'
+              placeholder='请输入密码'
+              value={formData.password}
+              onChange={(value) => handleInputChange('password', value)}
+              disabled={loading}
+            />
+          </Cell>
+        </View>
 
-          <View className='form-group'>
-            <View className='input-wrapper'>
-              <Text className='input-label'>密码</Text>
-              <Input
-                className='form-input'
-                type='password'
-                placeholder='请输入密码'
-                value={formData.password}
-                onInput={(e) => handleInputChange('password', e.detail.value)}
-                disabled={loading}
-              />
-            </View>
-          </View>
-
-          <Button 
-            className={`login-button ${loading ? 'loading' : ''}`}
-            onClick={handleSubmit}
+        <View className='login-actions'>
+          <Button
+            className='login-button'
+            color='primary'
+            size='large'
             loading={loading}
             disabled={loading}
+            onClick={handleSubmit}
           >
             {loading ? '登录中...' : '登录'}
           </Button>
@@ -122,31 +133,31 @@ export default function Login() {
         {/* 快速登录 */}
         <View className='quick-login'>
           <Text className='quick-login-title'>快速登录</Text>
-          <View className='quick-login-buttons'>
-            <Button 
-              className='quick-btn admin-btn'
-              size='mini'
+          <Space direction='horizontal' size='medium'>
+            <Button
+              size='small'
+              variant='outlined'
               onClick={() => handleQuickLogin('admin', 'password')}
               disabled={loading}
             >
               管理员账户
             </Button>
-            <Button 
-              className='quick-btn user-btn'
-              size='mini'
+            <Button
+              size='small'
+              variant='outlined'
               onClick={() => handleQuickLogin('test', 'password')}
               disabled={loading}
             >
               测试账户
             </Button>
-          </View>
+          </Space>
         </View>
+      </View>
 
-        {/* 底部说明 */}
-        <View className='login-footer'>
-          <Text className='footer-text'>Rocket + Taro 后端驱动路由系统</Text>
-          <Text className='footer-subtext'>演示项目 - 体验新一代前后端交互</Text>
-        </View>
+      {/* 底部信息 */}
+      <View className='login-footer'>
+        <Text className='footer-text'>基于 Rocket + Taro 构建</Text>
+        <Text className='footer-subtext'>体验新一代前后端交互架构</Text>
       </View>
     </View>
   )

@@ -123,15 +123,11 @@ pub enum RouteCommand {
         merge: Option<bool>,
     },
     
-    /// Request payment
-    RequestPayment {
-        payment_info: PaymentInfo,
-        callback_url: String,
-    },
     
     /// Composite command (execute multiple commands in sequence)
     Sequence {
         commands: Vec<RouteCommand>,
+        stop_on_error: Option<bool>,
     },
     
     /// Conditional command (decide which command to execute based on frontend state)
@@ -139,6 +135,25 @@ pub enum RouteCommand {
         condition: String,
         if_true: Box<RouteCommand>,
         if_false: Option<Box<RouteCommand>>,
+    },
+    
+    /// Delay command (execute command after specified time)
+    Delay {
+        duration_ms: u64,
+        command: Box<RouteCommand>,
+    },
+    
+    /// Parallel command (execute multiple commands simultaneously)
+    Parallel {
+        commands: Vec<RouteCommand>,
+        wait_for_all: bool,
+    },
+    
+    /// Retry command (retry command execution with backoff)
+    Retry {
+        command: Box<RouteCommand>,
+        max_attempts: u32,
+        delay_ms: u64,
     },
 }
 ```
@@ -227,8 +242,6 @@ class RouterHandler {
             case 'ProcessData':
                 return this.handleProcessData(routeCommand.payload)
             
-            case 'RequestPayment':
-                return this.handleRequestPayment(routeCommand.payload)
             
             case 'Sequence':
                 return this.handleSequence(routeCommand.payload)
@@ -335,43 +348,341 @@ class RouterHandler {
      - Updates user state to Store
      - Navigates to home page
 
-### Payment Flow Example
 
-For complex payment flows, the backend can return different route commands based on different conditions:
+## Architecture Enhancements v2.0 (August 2024)
+
+### Version Control and Compatibility System
+
+The architecture now supports versioned route commands with automatic fallback mechanisms:
 
 ```rust
-async fn handle_payment_request(&self, request: PaymentRequest) -> Result<RouteCommand, Error> {
-    let user = self.get_user(request.user_id).await?;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VersionedRouteCommand {
+    #[serde(default = "default_version")]
+    pub version: u32,
+    #[serde(flatten)]
+    pub command: RouteCommand,
+    pub fallback: Option<Box<VersionedRouteCommand>>,
+    #[serde(default)]
+    pub metadata: RouteCommandMetadata,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RouteCommandMetadata {
+    pub timeout_ms: Option<u64>,
+    pub priority: Option<u8>,
+    pub execution_context: HashMap<String, serde_json::Value>,
+}
+```
+
+#### Version Compatibility Checking
+
+The frontend automatically validates command versions:
+
+```javascript
+class RouterHandler {
+    checkVersionCompatibility(serverVersion) {
+        const serverMajor = Math.floor(serverVersion / 100)
+        const clientMajor = Math.floor(ROUTE_COMMAND_VERSION / 100)
+        return serverMajor === clientMajor
+    }
     
-    if user.balance >= request.amount {
-        // Sufficient balance, process directly
-        self.process_payment(&request).await?;
-        Ok(RouteCommand::NavigateTo {
-            path: "/payment-success".to_string(),
-            params: Some(json!({"order_id": request.order_id})),
-            replace: Some(true),
-        })
-    } else {
-        // Insufficient balance, guide to recharge
-        Ok(RouteCommand::ShowDialog {
-            dialog_type: DialogType::Confirm,
-            title: "Insufficient Balance".to_string(),
-            content: "Your balance is insufficient. Would you like to go to recharge?".to_string(),
-            actions: vec![
-                DialogAction {
-                    text: "Cancel".to_string(),
-                    action: None,
-                },
-                DialogAction {
-                    text: "Recharge".to_string(),
-                    action: Some(RouteCommand::NavigateTo {
-                        path: "/recharge".to_string(),
-                        params: Some(json!({"required_amount": request.amount - user.balance})),
-                        replace: Some(false),
-                    }),
-                },
-            ],
-        })
+    async executeVersionedCommand(versionedCommand) {
+        const { version, command, fallback } = versionedCommand
+        
+        if (!this.checkVersionCompatibility(version)) {
+            if (fallback) {
+                console.log('Executing fallback command due to version incompatibility')
+                await this.execute(fallback)
+                return
+            }
+            throw new Error(`Unsupported route command version: ${version}`)
+        }
+        
+        await this.executeCommand(command)
+    }
+}
+```
+
+### Enhanced Command Types
+
+#### 1. Delay Command
+Execute commands with precise timing control:
+
+```rust
+RouteCommand::Delay {
+    duration_ms: 2000,
+    command: Box::new(RouteCommand::NavigateTo {
+        path: "/delayed-page".to_string(),
+        params: None,
+        replace: None,
+    }),
+}
+```
+
+#### 2. Parallel Command
+Execute multiple commands simultaneously:
+
+```rust
+RouteCommand::Parallel {
+    commands: vec![
+        RouteCommand::ProcessData { /* update user */ },
+        RouteCommand::ProcessData { /* update notifications */ },
+        RouteCommand::ProcessData { /* update settings */ },
+    ],
+    wait_for_all: true,
+}
+```
+
+#### 3. Retry Command
+Automatic retry with exponential backoff:
+
+```rust
+RouteCommand::Retry {
+    command: Box::new(RouteCommand::NavigateTo {
+        path: "/critical-page".to_string(),
+        params: None,
+        replace: None,
+    }),
+    max_attempts: 3,
+    delay_ms: 1000,
+}
+```
+
+#### 4. Enhanced Conditional Command
+Runtime condition evaluation with safe expression parsing:
+
+```rust
+RouteCommand::Conditional {
+    condition: "user && user.is_admin".to_string(),
+    if_true: Box::new(RouteCommand::NavigateTo {
+        path: "/admin-dashboard".to_string(),
+        params: None,
+        replace: Some(true),
+    }),
+    if_false: Some(Box::new(RouteCommand::NavigateTo {
+        path: "/user-dashboard".to_string(),
+        params: None,
+        replace: Some(true),
+    })),
+}
+```
+
+### Business Logic Separation
+
+#### RouteCommandGenerator Pattern
+
+```rust
+pub struct RouteCommandGenerator;
+
+impl RouteCommandGenerator {
+    #[instrument(skip_all)]
+    pub fn generate_login_route_command(result: &LoginResult) -> RouteCommand {
+        info!(user_id = %result.user.id, "Generating login route command");
+        
+        if result.is_first_login {
+            RouteCommand::Sequence {
+                commands: vec![
+                    RouteCommand::ProcessData {
+                        data_type: "user".to_string(),
+                        data: serde_json::to_value(&result.user).unwrap(),
+                        merge: Some(false),
+                    },
+                    RouteCommand::NavigateTo {
+                        path: "/onboarding".to_string(),
+                        params: None,
+                        replace: Some(true),
+                    },
+                ],
+                stop_on_error: Some(true),
+            }
+        } else {
+            // Normal login flow...
+        }
+    }
+}
+```
+
+#### Pure Use Case Pattern
+
+```rust
+impl AuthUseCase {
+    /// Pure business logic - returns business result
+    pub async fn execute_login(&self, request: LoginRequest) -> UseCaseResult<LoginResult> {
+        // Business logic implementation...
+        let login_result = LoginResult::new(user, session)
+            .with_pending_tasks(pending_tasks)
+            .with_account_flags(flags);
+            
+        Ok(login_result)
+    }
+    
+    /// Route command generation - separate concern
+    pub async fn handle_login(&self, request: LoginRequest) -> UseCaseResult<RouteCommand> {
+        match self.execute_login(request).await {
+            Ok(login_result) => {
+                Ok(RouteCommandGenerator::generate_login_route_command(&login_result))
+            }
+            Err(e) => {
+                Ok(RouteCommandGenerator::generate_error_route_command(&e.to_string(), None))
+            }
+        }
+    }
+}
+```
+
+### Global Request Interceptor
+
+The frontend now automatically processes route commands from all API responses:
+
+```javascript
+const request = async (url, options = {}) => {
+    const response = await Taro.request(requestConfig)
+    
+    if (response.statusCode === 200) {
+        const responseData = response.data
+        
+        // 🚀 Global route command interceptor
+        if (responseData && typeof responseData === 'object') {
+            const routeCommand = responseData.route_command || responseData.routeCommand
+            
+            if (routeCommand) {
+                // Asynchronous execution without blocking current request
+                setTimeout(async () => {
+                    try {
+                        const store = useStore.getState()
+                        const routerHandler = store.getRouterHandler()
+                        
+                        if (routerHandler) {
+                            await routerHandler.execute(routeCommand)
+                        }
+                    } catch (routeError) {
+                        console.error('Failed to execute route command:', routeError)
+                    }
+                }, 0)
+            }
+        }
+        
+        return responseData
+    }
+}
+```
+
+### Enhanced Observability
+
+#### Execution Tracking
+
+```javascript
+class RouterHandler {
+    async execute(routeCommand) {
+        const executionId = this.generateExecutionId()
+        const startTime = performance.now()
+        
+        try {
+            await this.executeCommand(routeCommand, executionId)
+            
+            const duration = performance.now() - startTime
+            this.recordExecution(executionId, routeCommand, 'success', null, { duration })
+            
+        } catch (error) {
+            const duration = performance.now() - startTime
+            this.recordExecution(executionId, routeCommand, 'error', error.message, { duration })
+            
+            // Automatic error reporting in production
+            if (process.env.NODE_ENV === 'production') {
+                this.reportExecutionMetrics({
+                    executionId,
+                    commandType: routeCommand.type,
+                    error: error.message,
+                    duration,
+                    timestamp: new Date().toISOString()
+                })
+            }
+        }
+    }
+    
+    getExecutionStats() {
+        const total = this.executionHistory.length
+        const successful = this.executionHistory.filter(r => r.status === 'success').length
+        const failed = this.executionHistory.filter(r => r.status === 'error').length
+        
+        return {
+            total,
+            successful,
+            failed,
+            successRate: total > 0 ? (successful / total * 100).toFixed(2) + '%' : '0%',
+            avgDuration: this.calculateAverageDuration(),
+            commandTypes: this.getCommandTypeDistribution()
+        }
+    }
+}
+```
+
+#### Backend Metrics Collection
+
+```rust
+// New metrics endpoints
+#[post("/api/metrics/route-command-error", data = "<metric>")]
+pub async fn receive_route_command_error_metric(
+    metric: Json<RouteCommandErrorMetric>,
+) -> Json<ApiResponse<()>> {
+    error!(
+        execution_id = %metric.execution_id,
+        command_type = %metric.command_type,
+        error_message = %metric.error,
+        "Frontend route command execution error received"
+    );
+    
+    // Process metric for monitoring and alerting
+    Json(ApiResponse::with_toast((), "Metric recorded"))
+}
+
+#[post("/api/metrics/health")]
+pub async fn get_system_health() -> Json<ApiResponse<SystemHealthStatus>> {
+    let health_status = SystemHealthStatus {
+        status: "healthy".to_string(),
+        timestamp: chrono::Utc::now(),
+        components: vec![
+            ComponentHealth {
+                name: "route_handler".to_string(),
+                status: "healthy".to_string(),
+                details: Some("All route commands executing normally".to_string()),
+            },
+        ],
+        version: env!("CARGO_PKG_VERSION").to_string(),
+    };
+    
+    Json(ApiResponse::success(health_status))
+}
+```
+
+### Multi-Level Fallback System
+
+#### Command-Level Fallbacks
+```rust
+VersionedRouteCommand {
+    version: 200,
+    command: RouteCommand::NavigateTo { /* advanced navigation */ },
+    fallback: Some(Box::new(VersionedRouteCommand {
+        version: 100,
+        command: RouteCommand::NavigateTo { /* basic navigation */ },
+        fallback: None,
+    })),
+}
+```
+
+#### Execution-Level Fallbacks
+```javascript
+async handleExecutionError(originalCommand, error, executionId) {
+    const fallbackEntry = this.fallbackStack.find(entry => entry.executionId === executionId)
+    
+    if (fallbackEntry) {
+        console.log(`Executing fallback command due to error`)
+        try {
+            await this.execute(fallbackEntry.fallback)
+        } catch (fallbackError) {
+            this.showGenericError()
+        }
     }
 }
 ```

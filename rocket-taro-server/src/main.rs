@@ -44,7 +44,10 @@ async fn rocket() -> _ {
             routes::cache::invalidate_cache,
             routes::cache::cleanup_expired_sessions,
             routes::cache::get_cache_keys,
-            routes::cache::warmup_cache
+            routes::cache::warmup_cache,
+            routes::metrics::receive_route_command_error_metric,
+            routes::metrics::receive_performance_metric,
+            routes::metrics::get_system_health
         ])
         .mount("/", routes::cors::cors_routes())
         .mount("/", FileServer::from(relative!("frontend/dist")))

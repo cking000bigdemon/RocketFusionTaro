@@ -70,7 +70,7 @@ pub async fn login(
 
     // 如果是成功的登录，需要处理会话和缓存逻辑
     // 这里保持向后兼容性，仍然创建会话token和设置cookie
-    if let RouteCommand::Sequence { commands } = &route_command {
+    if let RouteCommand::Sequence { commands, .. } = &route_command {
         // 检查是否包含用户数据处理命令，说明登录成功
         if commands.iter().any(|cmd| matches!(cmd, RouteCommand::ProcessData { data_type, .. } if data_type == "user")) {
             // 重新验证用户以获取完整用户信息（用于向后兼容）

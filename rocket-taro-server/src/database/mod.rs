@@ -1,7 +1,7 @@
 use tokio_postgres::{Client, NoTls, Error};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{info, error};
+use tracing::error;
 
 pub mod auth;
 

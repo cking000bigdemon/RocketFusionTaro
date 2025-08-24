@@ -48,7 +48,7 @@ pub struct UserInfo {
     pub is_admin: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UserSession {
     pub id: Uuid,
     pub user_id: Uuid,

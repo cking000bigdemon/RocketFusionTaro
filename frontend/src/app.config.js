@@ -1,13 +1,14 @@
-export default defineAppConfig({
+export default {
   pages: [
-    'pages/index/index',
     'pages/login/index',
-    'pages/about/index'
+    'pages/index/index'
   ],
   window: {
     backgroundTextStyle: 'light',
-    navigationBarBackgroundColor: '#fff',
-    navigationBarTitleText: 'Rocket Taro App',
-    navigationBarTextStyle: 'black'
+    navigationBarBackgroundColor: '#4A90E2',
+    navigationBarTitleText: 'Rocket Taro',
+    navigationBarTextStyle: 'white',
+    navigationStyle: 'default',
+    backgroundColor: '#F8FAFE'
   }
-})
+}

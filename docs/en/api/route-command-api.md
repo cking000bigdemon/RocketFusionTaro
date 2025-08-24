@@ -382,62 +382,148 @@ async handleSequence({ commands }) {
 }
 ```
 
-### 5. RequestPayment - Request Payment
+### 5. Delay - Delayed Command Execution
 
-Used to trigger frontend payment flow.
+Execute a command after a specified delay.
 
 #### Data Structure
 ```typescript
-interface RequestPaymentPayload {
-  payment_info: PaymentInfo
-  callback_url: string
-}
-
-interface PaymentInfo {
-  order_id: string
-  amount: number
-  currency: string
-  description: string
-  payment_method: 'wechat' | 'alipay' | 'card'
+interface DelayPayload {
+  duration_ms: number               // Delay duration in milliseconds
+  command: RouteCommand            // Command to execute after delay
 }
 ```
 
 #### Examples
 
-**WeChat Payment**:
+**Delayed Navigation**:
 ```json
 {
-  "type": "RequestPayment",
+  "type": "Delay",
   "payload": {
-    "payment_info": {
-      "order_id": "ORDER_123456",
-      "amount": 9900,
-      "currency": "CNY",
-      "description": "Product Purchase",
-      "payment_method": "wechat"
-    },
-    "callback_url": "/api/payment/callback"
+    "duration_ms": 2000,
+    "command": {
+      "type": "NavigateTo",
+      "payload": { "path": "/welcome" }
+    }
   }
 }
 ```
 
 #### Frontend Implementation
 ```javascript
-async handleRequestPayment({ payment_info, callback_url }) {
-  switch (payment_info.payment_method) {
-    case 'wechat':
-      await this.handleWechatPay(payment_info, callback_url)
-      break
-    case 'alipay':
-      await this.handleAlipay(payment_info, callback_url)
-      break
-    default:
-      console.error('Unsupported payment method:', payment_info.payment_method)
+async handleDelay({ duration_ms, command }) {
+  await new Promise(resolve => setTimeout(resolve, duration_ms))
+  await this.execute(command)
+}
+```
+
+### 6. Parallel - Parallel Command Execution
+
+Execute multiple commands simultaneously.
+
+#### Data Structure
+```typescript
+interface ParallelPayload {
+  commands: RouteCommand[]         // Array of commands to execute
+  wait_for_all: boolean           // Whether to wait for all commands to complete
+}
+```
+
+#### Examples
+
+**Parallel Data Updates**:
+```json
+{
+  "type": "Parallel",
+  "payload": {
+    "commands": [
+      {
+        "type": "ProcessData",
+        "payload": { "data_type": "user", "data": {...} }
+      },
+      {
+        "type": "ProcessData", 
+        "payload": { "data_type": "notifications", "data": [...] }
+      }
+    ],
+    "wait_for_all": true
   }
 }
 ```
 
-### 6. Conditional - Conditional Commands
+#### Frontend Implementation
+```javascript
+async handleParallel({ commands, wait_for_all }) {
+  const promises = commands.map(command => this.execute(command))
+  
+  if (wait_for_all) {
+    await Promise.all(promises)
+  } else {
+    // Fire and forget
+    promises.forEach(promise => {
+      promise.catch(error => console.error('Parallel command failed:', error))
+    })
+  }
+}
+```
+
+### 7. Retry - Command Retry with Backoff
+
+Retry command execution with configurable attempts and delay.
+
+#### Data Structure
+```typescript
+interface RetryPayload {
+  command: RouteCommand            // Command to retry
+  max_attempts: number             // Maximum retry attempts
+  delay_ms: number                 // Base delay between attempts (exponential backoff)
+}
+```
+
+#### Examples
+
+**Retry Critical Navigation**:
+```json
+{
+  "type": "Retry",
+  "payload": {
+    "command": {
+      "type": "NavigateTo",
+      "payload": { "path": "/critical-page" }
+    },
+    "max_attempts": 3,
+    "delay_ms": 1000
+  }
+}
+```
+
+#### Frontend Implementation
+```javascript
+async handleRetry({ command, max_attempts, delay_ms }) {
+  let lastError
+  
+  for (let attempt = 1; attempt <= max_attempts; attempt++) {
+    try {
+      await this.execute(command)
+      return // Success, exit retry loop
+    } catch (error) {
+      lastError = error
+      console.warn(`Attempt ${attempt} failed:`, error)
+      
+      if (attempt < max_attempts) {
+        // Exponential backoff
+        const backoffDelay = delay_ms * Math.pow(2, attempt - 1)
+        await new Promise(resolve => setTimeout(resolve, backoffDelay))
+      }
+    }
+  }
+  
+  throw lastError // All attempts failed
+}
+```
+
+### 8. Conditional - Conditional Commands
 
 Execute different commands based on frontend state conditions.
 
@@ -608,9 +694,18 @@ pub enum RouteCommand {
     Sequence {
         commands: Vec<RouteCommand>,
     },
-    RequestPayment {
-        payment_info: PaymentInfo,
-        callback_url: String,
+    Delay {
+        duration_ms: u64,
+        command: Box<RouteCommand>,
+    },
+    Parallel {
+        commands: Vec<RouteCommand>,
+        wait_for_all: bool,
+    },
+    Retry {
+        command: Box<RouteCommand>,
+        max_attempts: u32,
+        delay_ms: u64,
     },
     Conditional {
         condition: String,
@@ -705,6 +800,288 @@ pub enum DataType {
 - Provide default handling for new command types
 - Maintain backward compatibility
 - Gradually deprecate old command types
+
+## Versioned Route Commands (v2.0)
+
+### Version Control System
+
+Route commands now support version control with automatic fallback mechanisms:
+
+#### Data Structure
+```typescript
+interface VersionedRouteCommand {
+  version?: number                 // Command version (defaults to current)
+  command: RouteCommand           // The actual route command
+  fallback?: VersionedRouteCommand // Fallback command for incompatible versions
+  metadata?: RouteCommandMetadata // Additional execution metadata
+}
+
+interface RouteCommandMetadata {
+  timeout_ms?: number             // Command execution timeout
+  priority?: number               // Execution priority (1-10)
+  execution_context?: Record<string, any> // Additional context data
+}
+```
+
+#### Examples
+
+**Versioned Navigation with Fallback**:
+```json
+{
+  "version": 200,
+  "command": {
+    "type": "NavigateTo",
+    "payload": {
+      "path": "/advanced-dashboard",
+      "params": { "features": ["analytics", "reports"] }
+    }
+  },
+  "fallback": {
+    "version": 100,
+    "command": {
+      "type": "NavigateTo",
+      "payload": { "path": "/dashboard" }
+    }
+  },
+  "metadata": {
+    "timeout_ms": 5000,
+    "priority": 8
+  }
+}
+```
+
+### Frontend Version Handling
+
+```javascript
+class RouterHandler {
+  constructor() {
+    this.SUPPORTED_VERSION = 200 // Current client version
+  }
+  
+  async execute(routeCommand) {
+    if (this.isVersionedCommand(routeCommand)) {
+      return this.executeVersionedCommand(routeCommand)
+    }
+    return this.executeCommand(routeCommand)
+  }
+  
+  checkVersionCompatibility(serverVersion) {
+    const serverMajor = Math.floor(serverVersion / 100)
+    const clientMajor = Math.floor(this.SUPPORTED_VERSION / 100)
+    return serverMajor === clientMajor
+  }
+  
+  async executeVersionedCommand(versionedCommand) {
+    const { version, command, fallback, metadata } = versionedCommand
+    
+    if (!this.checkVersionCompatibility(version)) {
+      if (fallback) {
+        console.log('Executing fallback due to version incompatibility')
+        return this.execute(fallback)
+      }
+      throw new Error(`Unsupported command version: ${version}`)
+    }
+    
+    // Set execution timeout if specified
+    if (metadata?.timeout_ms) {
+      return Promise.race([
+        this.executeCommand(command),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Command timeout')), metadata.timeout_ms)
+        )
+      ])
+    }
+    
+    return this.executeCommand(command)
+  }
+}
+```
+
+## Metrics and Observability Endpoints
+
+### Error Reporting Endpoint
+
+**POST /api/metrics/route-command-error**
+
+Used by frontend to report route command execution errors for monitoring.
+
+#### Request Format
+```typescript
+interface RouteCommandErrorMetric {
+  execution_id: string            // Unique execution identifier
+  command_type: string            // Type of command that failed
+  error: string                   // Error message
+  duration?: number               // Execution duration in milliseconds
+  timestamp: string               // ISO timestamp
+  user_agent: string              // Browser/client information
+  url: string                     // Current page URL
+}
+```
+
+#### Example Request
+```json
+{
+  "execution_id": "exec_abc123",
+  "command_type": "NavigateTo",
+  "error": "Navigation failed: page not found",
+  "duration": 1250.5,
+  "timestamp": "2024-08-24T16:00:00Z",
+  "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)",
+  "url": "https://example.com/dashboard"
+}
+```
+
+#### Response Format
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": null,
+  "route_command": {
+    "type": "ShowDialog",
+    "payload": {
+      "dialog_type": "Toast",
+      "title": "",
+      "content": "Error reported successfully"
+    }
+  }
+}
+```
+
+### Performance Metrics Endpoint
+
+**POST /api/metrics/performance**
+
+Used to collect frontend performance metrics.
+
+#### Request Format
+```typescript
+interface PerformanceMetric {
+  metric_type: string                    // Type of performance metric
+  value: number                         // Metric value
+  tags: Record<string, string>          // Additional tags for categorization
+  timestamp: string                     // ISO timestamp
+}
+```
+
+#### Example Request
+```json
+{
+  "metric_type": "route_command_duration",
+  "value": 850.2,
+  "tags": {
+    "command_type": "Sequence",
+    "commands_count": "3",
+    "page": "/dashboard"
+  },
+  "timestamp": "2024-08-24T16:00:00Z"
+}
+```
+
+### System Health Endpoint
+
+**POST /api/metrics/health**
+
+Provides system health status and component information.
+
+#### Response Format
+```typescript
+interface SystemHealthStatus {
+  status: 'healthy' | 'degraded' | 'unhealthy'
+  timestamp: string
+  components: ComponentHealth[]
+  version: string
+}
+
+interface ComponentHealth {
+  name: string
+  status: 'healthy' | 'degraded' | 'unhealthy'
+  last_check: string
+  details?: string
+}
+```
+
+#### Example Response
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "status": "healthy",
+    "timestamp": "2024-08-24T16:00:00Z",
+    "components": [
+      {
+        "name": "database",
+        "status": "healthy",
+        "last_check": "2024-08-24T16:00:00Z"
+      },
+      {
+        "name": "redis",
+        "status": "healthy", 
+        "last_check": "2024-08-24T16:00:00Z"
+      },
+      {
+        "name": "route_handler",
+        "status": "healthy",
+        "last_check": "2024-08-24T16:00:00Z",
+        "details": "All route commands executing normally"
+      }
+    ],
+    "version": "2.0.0"
+  },
+  "route_command": null
+}
+```
+
+### Frontend Metrics Integration
+
+```javascript
+// Automatic error reporting (production only)
+class RouterHandler {
+  async execute(routeCommand) {
+    const startTime = performance.now()
+    const executionId = this.generateExecutionId()
+    
+    try {
+      await this.executeCommand(routeCommand)
+      
+      // Report success metrics
+      this.reportPerformanceMetric({
+        metric_type: 'route_command_duration',
+        value: performance.now() - startTime,
+        tags: { command_type: routeCommand.type }
+      })
+      
+    } catch (error) {
+      // Automatic error reporting in production
+      if (process.env.NODE_ENV === 'production') {
+        await this.reportExecutionError({
+          execution_id: executionId,
+          command_type: routeCommand.type,
+          error: error.message,
+          duration: performance.now() - startTime,
+          timestamp: new Date().toISOString(),
+          user_agent: navigator.userAgent,
+          url: window.location.href
+        })
+      }
+      throw error
+    }
+  }
+  
+  async reportExecutionError(errorMetric) {
+    try {
+      await fetch('/api/metrics/route-command-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(errorMetric)
+      })
+    } catch (reportError) {
+      console.warn('Failed to report error metric:', reportError)
+    }
+  }
+}
+```
 
 ## Extension Commands
 
