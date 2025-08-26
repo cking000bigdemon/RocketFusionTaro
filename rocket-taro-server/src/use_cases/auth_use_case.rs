@@ -3,20 +3,22 @@ use tracing::{info, warn, error, instrument};
 
 use crate::database::DbPool;
 use crate::models::{
-    auth::{LoginRequest, User, UserInfo, UserSession},
+    auth::{LoginRequest, RegisterRequest, User, UserInfo, UserSession},
     route_command::RouteCommand,
     business_results::{LoginResult, LogoutResult, AccountFlags},
 };
+use crate::config::{RouteConfig, Platform};
 use super::{UseCase, UseCaseError, UseCaseResult, route_command_generator::RouteCommandGenerator};
 
 /// 认证用例，处理用户登录相关的业务逻辑
 pub struct AuthUseCase {
     db_pool: DbPool,
+    route_config: RouteConfig,
 }
 
 impl AuthUseCase {
-    pub fn new(db_pool: DbPool) -> Self {
-        Self { db_pool }
+    pub fn new(db_pool: DbPool, route_config: RouteConfig) -> Self {
+        Self { db_pool, route_config }
     }
 
     /// 处理用户登录请求 - 纯业务逻辑
@@ -70,10 +72,10 @@ impl AuthUseCase {
     }
 
     /// 处理用户登录请求 - 包含路由决策（保留向后兼容）
-    pub async fn handle_login(&self, request: LoginRequest) -> UseCaseResult<RouteCommand> {
+    pub async fn handle_login(&self, request: LoginRequest, platform: Platform) -> UseCaseResult<RouteCommand> {
         match self.execute_login(request).await {
             Ok(login_result) => {
-                Ok(RouteCommandGenerator::generate_login_route_command(&login_result))
+                Ok(RouteCommandGenerator::generate_login_route_command(&login_result, &self.route_config, platform))
             }
             Err(e) => {
                 let error_code = match &e {
@@ -81,7 +83,7 @@ impl AuthUseCase {
                     UseCaseError::DatabaseError(_) => Some("DATABASE_ERROR"),
                     _ => None,
                 };
-                Ok(RouteCommandGenerator::generate_error_route_command(&e.to_string(), error_code))
+                Ok(RouteCommandGenerator::generate_error_route_command(&e.to_string(), error_code, &self.route_config, platform))
             }
         }
     }
@@ -258,21 +260,23 @@ impl AuthUseCase {
     }
     
     /// 处理用户登出 - 包含路由决策（保留向后兼容）
-    pub async fn handle_logout(&self, session_token: &str) -> UseCaseResult<RouteCommand> {
+    pub async fn handle_logout(&self, session_token: &str, platform: Platform) -> UseCaseResult<RouteCommand> {
         // 这里需要获取用户ID，简化处理使用固定值
         // 在实际实现中应该从session_token解析或查询获得user_id
         let user_id = uuid::Uuid::new_v4(); // 简化处理
         
         match self.execute_logout(session_token, user_id).await {
             Ok(logout_result) => {
-                Ok(RouteCommandGenerator::generate_logout_route_command(&logout_result))
+                Ok(RouteCommandGenerator::generate_logout_route_command(&logout_result, &self.route_config, platform))
             }
             Err(e) => {
                 warn!(error = %e, "Logout failed, but clearing client state");
+                let login_route = self.route_config.get_route("auth.login", platform)
+                    .unwrap_or_else(|| "/pages/login/login".to_string());
                 // 即使后端登出失败，也要清理前端状态
                 Ok(RouteCommand::sequence(vec![
                     RouteCommand::process_data("user", json!(null)),
-                    RouteCommand::redirect_to("/pages/login/index"),
+                    RouteCommand::redirect_to(&login_route),
                 ]))
             }
         }
@@ -290,6 +294,123 @@ impl AuthUseCase {
         Ok(has_unsaved)
     }
 
+    /// 处理用户注册请求
+    #[instrument(skip_all, name = "handle_register")]
+    pub async fn handle_register(&self, request: RegisterRequest, platform: Platform) -> UseCaseResult<RouteCommand> {
+        info!("Processing registration request for user: {}", request.username);
+
+        // 1. 验证密码确认
+        if request.password != request.confirm_password {
+            warn!("Password confirmation mismatch for user: {}", request.username);
+            return Ok(RouteCommand::alert("注册失败", "两次输入的密码不一致，请重新输入"));
+        }
+
+        // 2. 验证账号格式
+        if request.username.len() < 3 || request.username.len() > 30 {
+            warn!("Invalid account length for user: {}", request.username);
+            return Ok(RouteCommand::alert("注册失败", "账号长度必须在3-30个字符之间"));
+        }
+
+        // 3. 验证密码强度
+        if request.password.len() < 6 || request.password.len() > 30 {
+            warn!("Invalid password length for user: {}", request.username);
+            return Ok(RouteCommand::alert("注册失败", "密码长度必须在6-30个字符之间"));
+        }
+
+        // 4. 检查用户名是否已存在
+        match self.check_username_exists(&request.username).await {
+            Ok(true) => {
+                warn!("Username already exists: {}", request.username);
+                return Ok(RouteCommand::alert("注册失败", "该账号已存在，请更换其他账号"));
+            }
+            Ok(false) => {
+                info!("Username available: {}", request.username);
+            }
+            Err(e) => {
+                error!("Failed to check username existence: {}", e);
+                return Ok(RouteCommand::alert("注册失败", "系统错误，请稍后重试"));
+            }
+        }
+
+        // 5. 创建用户
+        let user = match self.create_user(&request).await {
+            Ok(user) => {
+                info!("User registration successful: {}", user.username);
+                user
+            }
+            Err(e) => {
+                error!("Failed to create user {}: {}", request.username, e);
+                return Ok(RouteCommand::alert("注册失败", "创建账号失败，请稍后重试"));
+            }
+        };
+
+        // 6. 自动登录新用户（创建会话）
+        match self.create_session(&user).await {
+            Ok(session) => {
+                info!("Auto-login session created for new user: {}", user.username);
+                
+                // 7. 构建登录结果并生成路由指令
+                let mut login_result = LoginResult::new(user.clone(), session);
+                let account_flags = self.build_account_flags(&user).await.unwrap_or_default();
+                login_result = login_result.with_account_flags(account_flags);
+                
+                let home_route = self.route_config.get_route("home.main", platform)
+                    .unwrap_or_else(|| "/pages/home/home".to_string());
+                Ok(RouteCommand::sequence(vec![
+                    RouteCommand::process_data("user", serde_json::to_value(UserInfo::from(user))?),
+                    RouteCommand::navigate_to(&home_route),
+                ]))
+            }
+            Err(e) => {
+                warn!("Failed to create session for new user, but registration successful: {}", e);
+                let login_route = self.route_config.get_route("auth.login", platform)
+                    .unwrap_or_else(|| "/pages/login/login".to_string());
+                Ok(RouteCommand::sequence(vec![
+                    RouteCommand::alert("注册成功", "账号创建成功，请重新登录"),
+                    RouteCommand::navigate_to(&login_route),
+                ]))
+            }
+        }
+    }
+
+    /// 检查用户名是否已存在
+    #[instrument(skip_all, name = "check_username_exists")]
+    async fn check_username_exists(&self, username: &str) -> UseCaseResult<bool> {
+        use crate::database::auth::check_username_exists;
+        
+        info!(username = %username, "Checking username existence");
+        
+        match check_username_exists(&self.db_pool, username).await {
+            Ok(exists) => {
+                info!(username = %username, exists = %exists, "Username existence check completed");
+                Ok(exists)
+            }
+            Err(e) => {
+                error!(username = %username, error = %e, "Database error during username check");
+                Err(UseCaseError::DatabaseError(e.to_string()))
+            }
+        }
+    }
+
+    /// 创建新用户
+    #[instrument(skip_all, name = "create_user")]
+    async fn create_user(&self, request: &RegisterRequest) -> UseCaseResult<User> {
+        use crate::database::auth::create_user;
+        
+        info!(username = %request.username, "Creating new user");
+        
+        match create_user(&self.db_pool, request).await {
+            Ok(user) => {
+                info!(user_id = %user.id, username = %user.username, "User created successfully");
+                Ok(user)
+            }
+            Err(e) => {
+                error!(username = %request.username, error = %e, "Database error during user creation");
+                Err(UseCaseError::DatabaseError(e.to_string()))
+            }
+        }
+    }
+
     /// 获取当前用户信息
     pub async fn get_current_user(&self, user: User) -> UseCaseResult<RouteCommand> {
         Ok(RouteCommand::process_data(
@@ -301,14 +422,12 @@ impl AuthUseCase {
 
 impl UseCase<LoginRequest, RouteCommand> for AuthUseCase {
     async fn execute(&self, input: LoginRequest) -> Result<RouteCommand, UseCaseError> {
-        self.handle_login(input).await
+        self.handle_login(input, Platform::default()).await
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::models::auth::LoginRequest;
 
     // 注意：这些测试需要数据库连接，在实际项目中应该使用模拟对象
     // 这里只提供测试结构的示例

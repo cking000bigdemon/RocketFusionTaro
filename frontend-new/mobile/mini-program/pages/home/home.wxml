@@ -1,0 +1,15 @@
+<!--pages/home/home.wxml-->
+<view class="container">
+  <view class="header">
+    <text class="title">首页</text>
+  </view>
+  
+  <view class="user-info" wx:if="{{isLoggedIn}}">
+    <text class="welcome">欢迎，{{userInfo.username}}</text>
+    <text class="status">认证状态：已登录</text>
+  </view>
+  
+  <view class="content">
+    <text class="description">这是一个受保护的页面，需要登录后才能访问。</text>
+  </view>
+</view>

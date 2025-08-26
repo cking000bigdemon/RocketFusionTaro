@@ -1,0 +1,214 @@
+// 管理后台样式变量定义
+
+// 颜色主题
+$primary-color: #4A90E2;
+$primary-color-light: #6ba3e8;
+$primary-color-dark: #3a7bc8;
+
+$success-color: #67C23A;
+$warning-color: #E6A23C;
+$danger-color: #F56C6C;
+$info-color: #909399;
+
+// 中性色
+$text-primary: #303133;
+$text-regular: #606266;
+$text-secondary: #909399;
+$text-placeholder: #A8ABB2;
+$text-disabled: #C0C4CC;
+
+$border-lighter: #EBEEF5;
+$border-light: #E4E7ED;
+$border-base: #DCDFE6;
+$border-dark: #D4D7DE;
+$border-darker: #CDD0D6;
+
+$fill-darker: #E6E8EB;
+$fill-dark: #EBEEF5;
+$fill-base: #F2F6FC;
+$fill-light: #F8FAFC;
+$fill-lighter: #FAFCFF;
+
+// 背景色
+$bg-white: #FFFFFF;
+$bg-page: #F2F3F5;
+$bg-sidebar: #FFFFFF;
+$bg-header: #FFFFFF;
+
+// 布局尺寸
+$header-height: 60px;
+$sidebar-width: 260px;
+$sidebar-width-collapsed: 64px;
+
+// 间距系统
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+$spacing-xxl: 48px;
+
+// 字体大小
+$font-size-xs: 12px;
+$font-size-sm: 13px;
+$font-size-base: 14px;
+$font-size-md: 16px;
+$font-size-lg: 18px;
+$font-size-xl: 20px;
+$font-size-xxl: 24px;
+
+// 字体粗细
+$font-weight-light: 300;
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+
+// 圆角
+$border-radius-small: 4px;
+$border-radius-base: 6px;
+$border-radius-large: 8px;
+$border-radius-round: 20px;
+
+// 阴影
+$box-shadow-light: 0 2px 4px rgba(0, 0, 0, 0.04);
+$box-shadow-base: 0 2px 8px rgba(0, 0, 0, 0.06);
+$box-shadow-dark: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+// 动画时长
+$transition-duration: 0.3s;
+$transition-timing: cubic-bezier(0.4, 0.0, 0.2, 1);
+
+// 响应式断点
+$breakpoint-xs: 480px;
+$breakpoint-sm: 768px;
+$breakpoint-md: 992px;
+$breakpoint-lg: 1200px;
+$breakpoint-xl: 1920px;
+
+// Z-index层级
+$z-index-dropdown: 1000;
+$z-index-sticky: 1020;
+$z-index-fixed: 1030;
+$z-index-modal-backdrop: 1040;
+$z-index-modal: 1050;
+$z-index-popover: 1060;
+$z-index-tooltip: 1070;
+
+// 深色主题变量（CSS变量形式）
+:root {
+  // 浅色主题
+  --admin-bg-color: #{$bg-white};
+  --admin-bg-page: #{$bg-page};
+  --admin-text-primary: #{$text-primary};
+  --admin-text-secondary: #{$text-secondary};
+  --admin-border-color: #{$border-base};
+  
+  // 组件特定颜色
+  --admin-sidebar-bg: #{$bg-sidebar};
+  --admin-header-bg: #{$bg-header};
+  --admin-card-bg: #{$bg-white};
+}
+
+// 深色主题
+.dark {
+  --admin-bg-color: #1d1e1f;
+  --admin-bg-page: #141414;
+  --admin-text-primary: #e5eaf3;
+  --admin-text-secondary: #a3a6ad;
+  --admin-border-color: #414243;
+  
+  --admin-sidebar-bg: #1d1e1f;
+  --admin-header-bg: #1d1e1f;
+  --admin-card-bg: #1d1e1f;
+}
+
+// 工具类
+.text-primary {
+  color: var(--admin-text-primary) !important;
+}
+
+.text-secondary {
+  color: var(--admin-text-secondary) !important;
+}
+
+.bg-primary {
+  background-color: $primary-color !important;
+}
+
+.border-primary {
+  border-color: $primary-color !important;
+}
+
+// 间距工具类
+@for $i from 0 through 10 {
+  .m-#{$i} {
+    margin: #{$i * 4}px !important;
+  }
+  
+  .mt-#{$i} {
+    margin-top: #{$i * 4}px !important;
+  }
+  
+  .mb-#{$i} {
+    margin-bottom: #{$i * 4}px !important;
+  }
+  
+  .ml-#{$i} {
+    margin-left: #{$i * 4}px !important;
+  }
+  
+  .mr-#{$i} {
+    margin-right: #{$i * 4}px !important;
+  }
+  
+  .p-#{$i} {
+    padding: #{$i * 4}px !important;
+  }
+  
+  .pt-#{$i} {
+    padding-top: #{$i * 4}px !important;
+  }
+  
+  .pb-#{$i} {
+    padding-bottom: #{$i * 4}px !important;
+  }
+  
+  .pl-#{$i} {
+    padding-left: #{$i * 4}px !important;
+  }
+  
+  .pr-#{$i} {
+    padding-right: #{$i * 4}px !important;
+  }
+}
+
+// 文本对齐工具类
+.text-left {
+  text-align: left !important;
+}
+
+.text-center {
+  text-align: center !important;
+}
+
+.text-right {
+  text-align: right !important;
+}
+
+// 显示隐藏工具类
+.d-none {
+  display: none !important;
+}
+
+.d-block {
+  display: block !important;
+}
+
+.d-flex {
+  display: flex !important;
+}
+
+.d-inline-block {
+  display: inline-block !important;
+}

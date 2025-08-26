@@ -12,6 +12,9 @@ database_url = "host=192.168.5.222 port=5432 user=user_ck password=ck320621 dbna
 [default.cache]
 redis_url = "redis://:ck320621@192.168.5.222:6379"
 
+# Note: These are default configurations. For production, set environment variables:
+# DATABASE_URL and REDIS_URL will override these values when set
+
 [development]
 address = "0.0.0.0"
 port = 8000

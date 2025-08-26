@@ -63,28 +63,6 @@ impl Default for AccountFlags {
 }
 
 
-/// 用户数据操作结果
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserDataResult {
-    /// 操作类型
-    pub operation: UserDataOperation,
-    /// 受影响的用户ID
-    pub user_id: Uuid,
-    /// 操作是否成功
-    pub success: bool,
-    /// 错误信息（如果失败）
-    pub error_message: Option<String>,
-    /// 返回的数据（如果有）
-    pub data: Option<serde_json::Value>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum UserDataOperation {
-    Create,
-    Update,
-    Delete,
-    Query,
-}
 
 impl LoginResult {
     /// 创建新的登录结果

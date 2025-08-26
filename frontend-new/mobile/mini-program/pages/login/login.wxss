@@ -1,0 +1,402 @@
+/* login.wxss */
+
+/* CSS变量优雅降级 */
+.login-container {
+  --color-primary: #4A90E2;
+  --color-primary-dark: #3A7BD5;
+  --color-text-primary: #333333;
+  --color-text-secondary: #666666;
+  --color-text-tertiary: #999999;
+  --color-background: #FFFFFF;
+  --color-border: #D9D9D9;
+  --color-border-light: #E8E8E8;
+
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  flex-direction: column;
+  padding: 40rpx;
+  box-sizing: border-box;
+}
+
+.logo-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: white;
+  margin-bottom: 80rpx;
+}
+
+.logo-icon {
+  font-size: 120rpx;
+  margin-bottom: 32rpx;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+.app-name {
+  font-size: 48rpx;
+  font-weight: bold;
+  margin-bottom: 16rpx;
+  text-shadow: 2rpx 2rpx 8rpx rgba(0, 0, 0, 0.3);
+}
+
+.welcome-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  margin-bottom: 12rpx;
+  text-shadow: 1rpx 1rpx 4rpx rgba(0, 0, 0, 0.3);
+}
+
+.subtitle {
+  font-size: 28rpx;
+  opacity: 0.9;
+  text-shadow: 1rpx 1rpx 4rpx rgba(0, 0, 0, 0.2);
+}
+
+.login-form {
+  background: white;
+  border-radius: 32rpx;
+  padding: 60rpx 40rpx;
+  box-shadow: 0 16rpx 64rpx rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(16rpx);
+}
+
+.form-group {
+  margin-bottom: 40rpx;
+}
+
+.input-wrapper {
+  position: relative;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.form-input {
+  width: 100%;
+  height: 96rpx;
+  padding: 0 32rpx;
+  border: 2rpx solid var(--color-border);
+  border-radius: 16rpx;
+  font-size: 32rpx;
+  color: var(--color-text-primary);
+  background-color: var(--color-background);
+  box-sizing: border-box;
+  transition: border-color 0.3s ease;
+}
+
+.form-input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+.input-placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 40rpx 0;
+}
+
+.remember-section {
+  display: flex;
+  align-items: center;
+}
+
+.remember-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.remember-text {
+  margin-left: 16rpx;
+  font-size: 28rpx;
+  color: var(--color-text-secondary);
+}
+
+.login-btn {
+  width: 100%;
+  height: 96rpx;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+  border: none;
+  border-radius: 48rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(74, 144, 226, 0.3);
+  transition: all 0.3s ease;
+  margin-bottom: 40rpx;
+}
+
+.login-btn:active {
+  transform: translateY(2rpx);
+  box-shadow: 0 4rpx 12rpx rgba(74, 144, 226, 0.3);
+}
+
+.login-btn.btn-disabled {
+  opacity: 0.6;
+  transform: none !important;
+  box-shadow: 0 4rpx 12rpx rgba(74, 144, 226, 0.2);
+}
+
+.quick-login-section {
+  margin-top: 40rpx;
+}
+
+.divider-section {
+  display: flex;
+  align-items: center;
+  margin: 40rpx 0;
+}
+
+.divider-line {
+  flex: 1;
+  height: 1rpx;
+  background-color: var(--color-border-light);
+}
+
+.divider-text {
+  padding: 0 24rpx;
+  font-size: 24rpx;
+  color: var(--color-text-tertiary);
+}
+
+.quick-buttons {
+  display: flex;
+  gap: 20rpx;
+}
+
+.quick-btn {
+  flex: 1;
+  height: 80rpx;
+  border: 2rpx solid var(--color-primary);
+  border-radius: 40rpx;
+  font-size: 28rpx;
+  color: var(--color-primary);
+  background-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.quick-btn:active {
+  background-color: var(--color-primary);
+  color: white;
+  transform: translateY(1rpx);
+}
+
+.quick-btn:disabled {
+  opacity: 0.5;
+  transform: none !important;
+}
+
+.wx-login-section {
+  margin-top: 40rpx;
+  padding-top: 40rpx;
+  border-top: 1rpx solid var(--color-border-light);
+}
+
+.wx-login-btn {
+  width: 100%;
+  height: 80rpx;
+  background-color: #07c160;
+  color: white;
+  border: none;
+  border-radius: 40rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 12rpx rgba(7, 193, 96, 0.3);
+}
+
+.wx-login-btn:active {
+  background-color: #06ad56;
+  transform: translateY(1rpx);
+}
+
+.register-link {
+  text-align: center;
+  margin-top: 32rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid var(--color-border-light);
+}
+
+.register-text {
+  font-size: 28rpx;
+  color: #07c160;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.register-text:active {
+  opacity: 0.7;
+}
+
+.footer-info {
+  margin-top: auto;
+  padding-top: 40rpx;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 24rpx;
+}
+
+.version-text {
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.platform-text {
+  display: block;
+  opacity: 0.8;
+}
+
+/* 加载遮罩 */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loading-content {
+  background: white;
+  padding: 60rpx 40rpx;
+  border-radius: 24rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.2);
+}
+
+.loading-spinner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 4rpx solid var(--color-border-light);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 24rpx;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: var(--color-text-secondary);
+}
+
+/* 安全区域适配 */
+.login-container {
+  padding-top: calc(40rpx + env(safe-area-inset-top));
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+}
+
+/* 小屏幕适配 */
+@media (max-height: 600px) {
+  .logo-section {
+    margin-bottom: 40rpx;
+  }
+  
+  .logo-icon {
+    font-size: 80rpx;
+    margin-bottom: 20rpx;
+  }
+  
+  .app-name {
+    font-size: 36rpx;
+    margin-bottom: 8rpx;
+  }
+  
+  .welcome-text {
+    font-size: 28rpx;
+  }
+  
+  .subtitle {
+    font-size: 24rpx;
+  }
+}
+
+/* 横屏适配 */
+@media (orientation: landscape) {
+  .login-container {
+    flex-direction: row;
+    align-items: center;
+    padding: 40rpx 80rpx;
+  }
+  
+  .logo-section {
+    flex: 1;
+    margin-bottom: 0;
+    margin-right: 60rpx;
+  }
+  
+  .login-form {
+    flex: 1;
+    max-width: 600rpx;
+  }
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+  .login-form {
+    background: rgba(42, 42, 42, 0.95);
+  }
+  
+  .form-input {
+    background-color: rgba(60, 60, 60, 0.8);
+    border-color: #404040;
+    color: white;
+  }
+  
+  .input-placeholder {
+    color: #888;
+  }
+  
+  .remember-text {
+    color: #ccc;
+  }
+  
+  .divider-line {
+    background-color: #404040;
+  }
+  
+  .divider-text {
+    color: #888;
+  }
+  
+  .loading-content {
+    background: #2a2a2a;
+  }
+  
+  .loading-text {
+    color: #ccc;
+  }
+}

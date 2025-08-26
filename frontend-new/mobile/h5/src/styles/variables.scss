@@ -1,0 +1,296 @@
+/**
+ * SCSS变量定义
+ * 统一管理设计系统的颜色、字体、间距等
+ */
+
+// ========================
+// 颜色变量
+// ========================
+
+// 主色调
+$color-primary: #4A90E2;
+$color-primary-light: #6BA3E8;
+$color-primary-dark: #3A7BD5;
+
+// 辅助色
+$color-secondary: #F8FAFE;
+$color-success: #52C41A;
+$color-warning: #FAAD14;
+$color-error: #F5222D;
+$color-info: #1890FF;
+
+// 背景色
+$color-background: #FFFFFF;
+$color-background-light: #FAFAFA;
+$color-background-dark: #F5F5F5;
+
+// 文字色
+$color-text-primary: #333333;
+$color-text-secondary: #666666;
+$color-text-tertiary: #999999;
+$color-text-disabled: #CCCCCC;
+
+// 边框色
+$color-border: #D9D9D9;
+$color-border-light: #E8E8E8;
+$color-border-dark: #CCCCCC;
+
+// 深色主题色彩
+$color-dark-background: #1A1A1A;
+$color-dark-surface: #2A2A2A;
+$color-dark-text-primary: #FFFFFF;
+$color-dark-text-secondary: #CCCCCC;
+$color-dark-text-tertiary: #999999;
+$color-dark-border: #404040;
+
+// ========================
+// 字体变量
+// ========================
+
+$font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+$font-family-code: 'SF Mono', Monaco, Inconsolata, 'Roboto Mono', Consolas, monospace;
+
+// 字体大小
+$font-size-xs: 10px;
+$font-size-sm: 12px;
+$font-size-base: 14px;
+$font-size-md: 16px;
+$font-size-lg: 18px;
+$font-size-xl: 20px;
+$font-size-2xl: 24px;
+$font-size-3xl: 32px;
+
+// 字重
+$font-weight-light: 300;
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+
+// 行高
+$line-height-tight: 1.2;
+$line-height-normal: 1.4;
+$line-height-relaxed: 1.6;
+$line-height-loose: 1.8;
+
+// ========================
+// 间距变量
+// ========================
+
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-base: 12px;
+$spacing-md: 16px;
+$spacing-lg: 20px;
+$spacing-xl: 24px;
+$spacing-2xl: 32px;
+$spacing-3xl: 48px;
+
+// ========================
+// 圆角变量
+// ========================
+
+$border-radius-xs: 2px;
+$border-radius-sm: 4px;
+$border-radius-base: 6px;
+$border-radius-md: 8px;
+$border-radius-lg: 12px;
+$border-radius-xl: 16px;
+$border-radius-2xl: 24px;
+$border-radius-full: 50%;
+
+// ========================
+// 阴影变量
+// ========================
+
+$box-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+$box-shadow-base: 0 2px 8px rgba(0, 0, 0, 0.1);
+$box-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+$box-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+$box-shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.15);
+
+// ========================
+// 过渡动画变量
+// ========================
+
+$transition-duration-fast: 150ms;
+$transition-duration-base: 300ms;
+$transition-duration-slow: 500ms;
+
+$transition-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
+$transition-timing-function-ease-out: cubic-bezier(0.0, 0.0, 0.2, 1);
+$transition-timing-function-ease-in: cubic-bezier(0.4, 0.0, 1, 1);
+
+// ========================
+// Z-index变量
+// ========================
+
+$z-index-dropdown: 1000;
+$z-index-sticky: 1010;
+$z-index-fixed: 1020;
+$z-index-modal-backdrop: 1030;
+$z-index-modal: 1040;
+$z-index-popover: 1050;
+$z-index-tooltip: 1060;
+$z-index-toast: 1070;
+
+// ========================
+// 断点变量
+// ========================
+
+$breakpoint-xs: 375px;
+$breakpoint-sm: 576px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 1024px;
+$breakpoint-xl: 1200px;
+$breakpoint-2xl: 1600px;
+
+// ========================
+// 组件特定变量
+// ========================
+
+// 按钮
+$button-height-sm: 28px;
+$button-height-base: 36px;
+$button-height-lg: 44px;
+$button-height-xl: 52px;
+
+// 输入框
+$input-height-sm: 32px;
+$input-height-base: 40px;
+$input-height-lg: 48px;
+
+// 导航栏
+$navbar-height: 46px;
+$navbar-background: $color-background;
+$navbar-text-color: $color-text-primary;
+
+// 标签栏
+$tabbar-height: 50px;
+$tabbar-background: $color-background;
+
+// 卡片
+$card-padding: $spacing-md;
+$card-background: $color-background;
+$card-border-radius: $border-radius-md;
+$card-shadow: $box-shadow-base;
+
+// ========================
+// Vant UI变量覆盖
+// ========================
+
+// 覆盖Vant的主题色
+:root {
+  --van-primary-color: #{$color-primary};
+  --van-success-color: #{$color-success};
+  --van-warning-color: #{$color-warning};
+  --van-danger-color: #{$color-error};
+  --van-info-color: #{$color-info};
+  
+  --van-text-color: #{$color-text-primary};
+  --van-text-color-2: #{$color-text-secondary};
+  --van-text-color-3: #{$color-text-tertiary};
+  
+  --van-background-color: #{$color-background};
+  --van-background-color-light: #{$color-background-light};
+  
+  --van-border-color: #{$color-border};
+  --van-border-radius-sm: #{$border-radius-sm};
+  --van-border-radius-md: #{$border-radius-base};
+  --van-border-radius-lg: #{$border-radius-md};
+  
+  --van-font-size-xs: #{$font-size-xs};
+  --van-font-size-sm: #{$font-size-sm};
+  --van-font-size-md: #{$font-size-base};
+  --van-font-size-lg: #{$font-size-md};
+  
+  --van-padding-xs: #{$spacing-xs};
+  --van-padding-sm: #{$spacing-sm};
+  --van-padding-md: #{$spacing-base};
+  --van-padding-lg: #{$spacing-md};
+  --van-padding-xl: #{$spacing-lg};
+}
+
+// 深色主题变量
+.theme-dark {
+  --van-background-color: #{$color-dark-background};
+  --van-background-color-light: #{$color-dark-surface};
+  
+  --van-text-color: #{$color-dark-text-primary};
+  --van-text-color-2: #{$color-dark-text-secondary};
+  --van-text-color-3: #{$color-dark-text-tertiary};
+  
+  --van-border-color: #{$color-dark-border};
+}
+
+// ========================
+// 混合宏 (Mixins)
+// ========================
+
+// 文本溢出省略号
+@mixin text-ellipsis($lines: 1) {
+  @if $lines == 1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  } @else {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: $lines;
+    -webkit-box-orient: vertical;
+    word-break: break-all;
+  }
+}
+
+// 清除浮动
+@mixin clearfix {
+  &::after {
+    content: '';
+    display: table;
+    clear: both;
+  }
+}
+
+// 居中对齐
+@mixin center($horizontal: true, $vertical: true) {
+  position: absolute;
+  
+  @if $horizontal and $vertical {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  } @else if $horizontal {
+    left: 50%;
+    transform: translateX(-50%);
+  } @else if $vertical {
+    top: 50%;
+    transform: translateY(-50%);
+  }
+}
+
+// Flex居中
+@mixin flex-center($direction: row) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: $direction;
+}
+
+// 响应式断点
+@mixin respond-to($breakpoint) {
+  @if $breakpoint == xs {
+    @media (max-width: #{$breakpoint-xs - 1}) { @content; }
+  }
+  @if $breakpoint == sm {
+    @media (min-width: #{$breakpoint-sm}) { @content; }
+  }
+  @if $breakpoint == md {
+    @media (min-width: #{$breakpoint-md}) { @content; }
+  }
+  @if $breakpoint == lg {
+    @media (min-width: #{$breakpoint-lg}) { @content; }
+  }
+  @if $breakpoint == xl {
+    @media (min-width: #{$breakpoint-xl}) { @content; }
+  }
+}

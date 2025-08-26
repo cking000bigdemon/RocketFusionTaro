@@ -1,0 +1,32 @@
+<view class="profile-container">
+  <!-- 用户信息区域 -->
+  <view class="user-info-section">
+    <view class="user-avatar">
+      <text class="avatar-text">{{userInfo.avatar || (userInfo.username ? userInfo.username.charAt(0).toUpperCase() : 'U')}}</text>
+    </view>
+    <view class="user-details">
+      <text class="username">{{userInfo.username || '未知用户'}}</text>
+      <text class="user-id">ID: {{userInfo.id || 'N/A'}}</text>
+    </view>
+  </view>
+
+  <!-- 功能菜单区域 -->
+  <view class="menu-section">
+    <view 
+      class="menu-item" 
+      wx:for="{{menuItems}}" 
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="onMenuItemTap"
+    >
+      <text class="menu-icon">{{item.icon}}</text>
+      <text class="menu-title">{{item.title}}</text>
+      <text class="menu-arrow">></text>
+    </view>
+  </view>
+
+  <!-- 退出登录按钮 -->
+  <view class="logout-section">
+    <button class="logout-btn" bindtap="onLogout">退出登录</button>
+  </view>
+</view>

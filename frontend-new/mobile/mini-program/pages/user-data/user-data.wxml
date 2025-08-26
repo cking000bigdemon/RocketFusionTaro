@@ -1,0 +1,23 @@
+<!--pages/user-data/user-data.wxml-->
+<view class="container">
+  <view class="header">
+    <text class="title">我的数据</text>
+  </view>
+  
+  <view class="user-info" wx:if="{{isLoggedIn}}">
+    <text class="welcome">用户：{{userInfo.username}}</text>
+  </view>
+  
+  <view class="data-list">
+    <view class="empty" wx:if="{{userData.length === 0}}">
+      <text>暂无数据</text>
+    </view>
+    <view class="data-item" wx:for="{{userData}}" wx:key="id">
+      <text>{{item.name}}</text>
+    </view>
+  </view>
+  
+  <view class="content">
+    <text class="description">这是一个受保护的数据页面，需要登录后才能访问。</text>
+  </view>
+</view>

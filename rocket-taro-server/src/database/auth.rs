@@ -6,9 +6,61 @@ use chrono::{Utc, Duration};
 use uuid::Uuid;
 use tracing::{info, warn, debug};
 
-use crate::models::auth::{User, UserSession, LoginRequest, PasswordHash, generate_session_token};
+use crate::models::auth::{User, UserSession, LoginRequest, RegisterRequest, PasswordHash, generate_session_token};
 
 pub type DbPool = Arc<Mutex<Client>>;
+
+// 检查用户名是否已存在
+pub async fn check_username_exists(
+    pool: &DbPool,
+    username: &str,
+) -> Result<bool, Error> {
+    let client = pool.lock().await;
+    
+    let row = client.query_opt(
+        "SELECT id FROM users WHERE username = $1",
+        &[&username],
+    ).await?;
+    
+    Ok(row.is_some())
+}
+
+// 创建新用户
+pub async fn create_user(
+    pool: &DbPool,
+    register_req: &RegisterRequest,
+) -> Result<User, Error> {
+    let client = pool.lock().await;
+    
+    let password_hash = PasswordHash::new(&register_req.password)
+        .expect("Password hash should not fail");
+    
+    let now = Utc::now();
+    let user_id = Uuid::new_v4();
+    
+    let row = client.query_one(
+        "INSERT INTO users (id, username, email, password_hash, full_name, avatar_url, is_active, is_admin, created_at, updated_at) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+         RETURNING id, username, email, full_name, avatar_url, is_active, is_admin, last_login_at, created_at, updated_at",
+        &[&user_id, &register_req.username, &register_req.email, &password_hash.hash, 
+          &None::<String>, &None::<String>, &true, &false, &now, &now],
+    ).await?;
+
+    info!("User created successfully: {}", register_req.username);
+    
+    Ok(User {
+        id: row.get(0),
+        username: row.get(1),
+        email: row.get(2),
+        full_name: row.get(3),
+        avatar_url: row.get(4),
+        is_active: row.get(5),
+        is_admin: row.get(6),
+        last_login_at: row.get(7),
+        created_at: row.get(8),
+        updated_at: row.get(9),
+    })
+}
 
 // 用户认证相关数据库操作
 pub async fn authenticate_user(

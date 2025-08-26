@@ -1,0 +1,31 @@
+# 路由配置文件
+# 定义不同平台的路由路径映射
+# 格式: route_name = { miniprogram = "小程序路径", h5 = "H5路径", admin = "管理后台路径" }
+
+[routes.auth]
+# 认证相关路由
+login = { miniprogram = "/pages/login/login", h5 = "/login", admin = "/auth/login" }
+register = { miniprogram = "/pages/auth/register", h5 = "/register", admin = "/auth/register" }
+logout = { miniprogram = "/pages/login/login", h5 = "/login", admin = "/auth/login" }  # 退出后跳转到登录页
+
+[routes.home]
+# 首页相关路由
+main = { miniprogram = "/pages/home/home", h5 = "/", admin = "/dashboard" }
+welcome = { miniprogram = "/pages/index/index", h5 = "/welcome", admin = "/welcome" }
+index = { miniprogram = "/pages/index/index", h5 = "/", admin = "/dashboard" }
+
+[routes.user]
+# 用户相关路由
+profile = { miniprogram = "/pages/profile/profile", h5 = "/profile", admin = "/user/profile" }
+data = { miniprogram = "/pages/user-data/user-data", h5 = "/user-data", admin = "/user/data" }
+settings = { miniprogram = "/pages/settings/settings", h5 = "/settings", admin = "/user/settings" }
+
+[routes.error]
+# 错误页面路由
+not_found = { miniprogram = "/pages/error/404", h5 = "/404", admin = "/error/404" }
+unauthorized = { miniprogram = "/pages/error/401", h5 = "/401", admin = "/error/401" }
+server_error = { miniprogram = "/pages/error/500", h5 = "/500", admin = "/error/500" }
+
+# 默认平台设置
+[defaults]
+platform = "miniprogram"  # 默认平台，当无法识别客户端平台时使用

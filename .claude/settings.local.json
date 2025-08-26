@@ -24,12 +24,25 @@
       "Bash(npm rebuild:*)",
       "Bash(npm:*)",
       "Bash(grep:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(scripts/build-all.bat)",
+      "Bash(scripts/dev-all.bat)",
+      "Bash(timeout:*)",
+      "Bash(wmic:*)",
+      "Bash(powershell:*)",
+      "Bash(dir:*)",
+      "Bash(del:*)",
+      "Bash(npx vite:*)",
+      "Bash(tasklist:*)",
+      "Bash(start \"\" \"F:\\rust-project\\Rocket\\debug-network-h5.html\")",
+      "Bash(start:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": [],
     "additionalDirectories": [
-      "F:\\f\\rust-project\\Rocket"
+      "F:\\f\\rust-project\\Rocket",
+      "F:\\d F:\\rust-project"
     ]
   }
 }

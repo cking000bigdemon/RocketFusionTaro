@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网络状态检测测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .status-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            background: #f9f9f9;
+        }
+        .status-healthy { border-left: 4px solid #28a745; }
+        .status-degraded { border-left: 4px solid #ffc107; }
+        .status-unhealthy { border-left: 4px solid #dc3545; }
+        .status-unknown { border-left: 4px solid #6c757d; }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover { background: #0056b3; }
+        .result { 
+            background: #f8f9fa; 
+            padding: 12px; 
+            border-radius: 4px; 
+            margin: 10px 0;
+            border: 1px solid #dee2e6;
+        }
+        .success { color: #28a745; }
+        .warning { color: #ffc107; }
+        .error { color: #dc3545; }
+        pre { 
+            background: #f1f3f4; 
+            padding: 12px; 
+            border-radius: 4px; 
+            overflow-x: auto; 
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🌐 网络状态检测系统测试</h1>
+    
+    <div class="status-card">
+        <h3>🚀 系统概览</h3>
+        <p>这个测试页面演示了新实现的网络状态检测功能：</p>
+        <ul>
+            <li>✅ Rocket后端服务状态检测</li>
+            <li>✅ 数据库连接状态 (PostgreSQL 192.168.5.222:5432)</li>
+            <li>✅ Redis缓存状态 (192.168.5.222:6379)</li>
+            <li>✅ 响应时间监控</li>
+            <li>✅ 详细错误信息展示</li>
+        </ul>
+    </div>
+
+    <div class="status-card">
+        <h3>🔍 API接口测试</h3>
+        <button class="test-button" onclick="testHealthCheck()">测试基础健康检查</button>
+        <button class="test-button" onclick="testSystemHealth()">测试系统健康检查</button>
+        <button class="test-button" onclick="testContinuously()">连续监控 (30秒)</button>
+        <button class="test-button" onclick="stopContinuousTest()">停止监控</button>
+        
+        <div id="test-results"></div>
+    </div>
+
+    <div class="status-card">
+        <h3>📊 实时状态展示</h3>
+        <div id="status-display">
+            <p>点击上方按钮开始测试...</p>
+        </div>
+    </div>
+
+    <script>
+        let continuousTestInterval = null;
+        
+        async function testHealthCheck() {
+            const resultsDiv = document.getElementById('test-results');
+            const statusDiv = document.getElementById('status-display');
+            
+            try {
+                resultsDiv.innerHTML = '<p>🔄 正在检测基础健康状态...</p>';
+                
+                const startTime = Date.now();
+                const response = await fetch('http://127.0.0.1:8000/api/health');
+                const responseTime = Date.now() - startTime;
+                const data = await response.json();
+                
+                if (response.ok && data.code === 200) {
+                    resultsDiv.innerHTML = `
+                        <div class="result success">
+                            <strong>✅ 基础健康检查成功</strong><br>
+                            响应时间: ${responseTime}ms<br>
+                            整体状态: ${data.data.status}
+                        </div>`;
+                    
+                    displayHealthStatus(data.data, 'basic');
+                } else {
+                    throw new Error(`API返回错误: ${data.message || response.statusText}`);
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>❌ 基础健康检查失败</strong><br>
+                        错误: ${error.message}
+                    </div>`;
+            }
+        }
+        
+        async function testSystemHealth() {
+            const resultsDiv = document.getElementById('test-results');
+            
+            try {
+                resultsDiv.innerHTML = '<p>🔄 正在检测系统健康状态...</p>';
+                
+                const startTime = Date.now();
+                const response = await fetch('http://127.0.0.1:8000/api/metrics/health', {
+                    method: 'POST'
+                });
+                const responseTime = Date.now() - startTime;
+                const data = await response.json();
+                
+                if (response.ok && data.code === 200) {
+                    resultsDiv.innerHTML = `
+                        <div class="result success">
+                            <strong>✅ 系统健康检查成功</strong><br>
+                            响应时间: ${responseTime}ms<br>
+                            整体状态: ${data.data.status}<br>
+                            组件数量: ${data.data.components.length}
+                        </div>`;
+                    
+                    displaySystemHealth(data.data);
+                } else {
+                    throw new Error(`API返回错误: ${data.message || response.statusText}`);
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>❌ 系统健康检查失败</strong><br>
+                        错误: ${error.message}
+                    </div>`;
+            }
+        }
+        
+        async function testContinuously() {
+            if (continuousTestInterval) {
+                stopContinuousTest();
+            }
+            
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<div class="result warning"><strong>🔄 开始连续监控...</strong></div>';
+            
+            let testCount = 0;
+            const maxTests = 30; // 30秒，每秒测试一次
+            
+            continuousTestInterval = setInterval(async () => {
+                testCount++;
+                try {
+                    const response = await fetch('http://127.0.0.1:8000/api/health');
+                    const data = await response.json();
+                    
+                    const timestamp = new Date().toLocaleTimeString();
+                    resultsDiv.innerHTML = `
+                        <div class="result ${response.ok ? 'success' : 'error'}">
+                            <strong>${response.ok ? '✅' : '❌'} 监控中 (${testCount}/${maxTests})</strong><br>
+                            时间: ${timestamp}<br>
+                            状态: ${response.ok ? data.data.status : '连接失败'}
+                        </div>`;
+                    
+                    if (response.ok) {
+                        displayHealthStatus(data.data, 'continuous');
+                    }
+                } catch (error) {
+                    resultsDiv.innerHTML = `
+                        <div class="result error">
+                            <strong>❌ 连续监控失败 (${testCount}/${maxTests})</strong><br>
+                            错误: ${error.message}
+                        </div>`;
+                }
+                
+                if (testCount >= maxTests) {
+                    stopContinuousTest();
+                    resultsDiv.innerHTML += '<div class="result">监控完成</div>';
+                }
+            }, 1000);
+        }
+        
+        function stopContinuousTest() {
+            if (continuousTestInterval) {
+                clearInterval(continuousTestInterval);
+                continuousTestInterval = null;
+            }
+        }
+        
+        function displayHealthStatus(data, testType) {
+            const statusDiv = document.getElementById('status-display');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const getStatusClass = (status) => {
+                switch(status) {
+                    case 'healthy': return 'status-healthy';
+                    case 'degraded': return 'status-degraded'; 
+                    case 'unhealthy': return 'status-unhealthy';
+                    default: return 'status-unknown';
+                }
+            };
+            
+            statusDiv.innerHTML = `
+                <div class="${getStatusClass(data.status)}">
+                    <h4>🏥 服务器状态 (${timestamp})</h4>
+                    <p><strong>整体状态:</strong> ${data.status}</p>
+                    <p><strong>版本:</strong> ${data.version}</p>
+                    
+                    <h5>🖥️ Rocket服务</h5>
+                    <p>状态: ${data.server.status} | 地址: ${data.server.host}:${data.server.port}</p>
+                    
+                    <h5>🗄️ 数据库 (PostgreSQL)</h5>
+                    <p>
+                        状态: <span class="${data.database.connected ? 'success' : 'error'}">${data.database.status}</span> |
+                        地址: ${data.database.host}:${data.database.port} |
+                        响应时间: ${data.database.response_time_ms}ms
+                        ${data.database.error ? '<br><span class="error">错误: ' + data.database.error + '</span>' : ''}
+                    </p>
+                    
+                    <h5>⚡ Redis缓存</h5>
+                    <p>
+                        状态: <span class="${data.cache.connected ? 'success' : 'error'}">${data.cache.status}</span> |
+                        地址: ${data.cache.host}:${data.cache.port} |
+                        响应时间: ${data.cache.response_time_ms}ms
+                        ${data.cache.error ? '<br><span class="error">错误: ' + data.cache.error + '</span>' : ''}
+                    </p>
+                </div>
+                
+                <details style="margin-top: 16px;">
+                    <summary>🔍 查看完整响应数据</summary>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </details>
+            `;
+        }
+        
+        function displaySystemHealth(data) {
+            const statusDiv = document.getElementById('status-display');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const componentsHtml = data.components.map(comp => `
+                <div style="margin: 8px 0; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <strong>${comp.name}</strong>: 
+                    <span class="${comp.status === 'healthy' ? 'success' : 'error'}">${comp.status}</span>
+                    ${comp.details ? `<br><small>${comp.details}</small>` : ''}
+                </div>
+            `).join('');
+            
+            statusDiv.innerHTML = `
+                <div class="status-${data.status}">
+                    <h4>🏥 系统健康状态 (${timestamp})</h4>
+                    <p><strong>整体状态:</strong> ${data.status}</p>
+                    <p><strong>版本:</strong> ${data.version}</p>
+                    <p><strong>检查时间:</strong> ${new Date(data.timestamp).toLocaleString()}</p>
+                    
+                    <h5>🔧 系统组件</h5>
+                    ${componentsHtml}
+                </div>
+                
+                <details style="margin-top: 16px;">
+                    <summary>🔍 查看完整响应数据</summary>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </details>
+            `;
+        }
+        
+        // 页面加载时自动运行一次基础检查
+        window.onload = function() {
+            setTimeout(testHealthCheck, 500);
+        };
+    </script>
+</body>
+</html>

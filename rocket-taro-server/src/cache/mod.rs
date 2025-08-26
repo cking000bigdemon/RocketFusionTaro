@@ -22,12 +22,24 @@ impl Fairing for CacheFairing {
     async fn on_ignite(&self, rocket: Rocket<Build>) -> rocket::fairing::Result {
         info!("Initializing Redis cache connection...");
         
-        let figment = rocket.figment();
-        let redis_url: String = match figment.extract_inner("cache.redis_url") {
-            Ok(url) => url,
-            Err(e) => {
-                error!("Failed to read Redis URL from configuration: {}", e);
-                return Err(rocket);
+        // 优先使用环境变量，否则从配置文件读取
+        let redis_url: String = match std::env::var("REDIS_URL") {
+            Ok(url) => {
+                info!("Using Redis URL from environment variable");
+                url
+            }
+            Err(_) => {
+                let figment = rocket.figment();
+                match figment.extract_inner("cache.redis_url") {
+                    Ok(url) => {
+                        info!("Using Redis URL from configuration file");
+                        url
+                    }
+                    Err(e) => {
+                        error!("Failed to read Redis URL from both environment variable and configuration: {}", e);
+                        return Err(rocket);
+                    }
+                }
             }
         };
 

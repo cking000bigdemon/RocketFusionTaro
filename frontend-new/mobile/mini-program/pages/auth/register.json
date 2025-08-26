@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "注册新账号",
+  "navigationBarBackgroundColor": "#4A90E2",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#f8f8f8",
+  "enablePullDownRefresh": false,
+  "renderer": "skyline",
+  "navigationStyle": "custom",
+  "componentFramework": "glass-easel"
+}

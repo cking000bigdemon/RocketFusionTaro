@@ -23,12 +23,13 @@ pub struct LoginRequest {
     pub password: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct RegisterRequest {
     pub username: String,
-    pub email: String,
     pub password: String,
-    pub full_name: Option<String>,
+    pub confirm_password: String,
+    pub email: String,
+    pub phone: String,
 }
 
 #[derive(Serialize, Debug)]
