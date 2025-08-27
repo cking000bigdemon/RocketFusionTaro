@@ -4,6 +4,7 @@ use tokio::sync::Mutex;
 use tracing::error;
 
 pub mod auth;
+pub mod wx_auth;
 
 pub type DbPool = Arc<Mutex<Client>>;
 

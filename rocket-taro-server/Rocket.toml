@@ -3,6 +3,11 @@ address = "0.0.0.0"
 port = 8000
 log_level = "normal"
 
+# 微信小程序配置
+[default.wechat]
+app_id = "wx2078fa60851884ca"
+app_secret = "b6727ca843ad05db752c1349ebcad8c9"
+
 [default.limits]
 forms = 32768
 

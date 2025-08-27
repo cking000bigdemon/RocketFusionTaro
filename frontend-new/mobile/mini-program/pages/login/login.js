@@ -283,17 +283,9 @@ Page({
   },
 
   /**
-   * 微信授权登录
+   * 微信快捷登录（新版本，使用后端驱动路由）
    */
-  async handleWxLogin(e) {
-    if (!e.detail.userInfo) {
-      wx.showToast({
-        title: '需要授权才能登录',
-        icon: 'none'
-      })
-      return
-    }
-
+  async handleWxLogin() {
     this.setData({ isLoading: true })
 
     try {
@@ -305,6 +297,8 @@ Page({
         throw new Error('Failed to get wx login code')
       }
 
+      console.log('Got WeChat code:', code)
+
       const apiClient = app.getApiClient()
       
       // 检查API客户端是否初始化成功
@@ -312,43 +306,75 @@ Page({
         throw new Error('API客户端未初始化，请重启小程序')
       }
       
-      // 调用微信登录API
-      const response = await apiClient.wxLogin(code, e.detail.userInfo)
+      // 调用新的微信登录API
+      const response = await apiClient.post('/api/auth/wx-login', { code })
       
-      console.log('WeChat login successful:', response)
+      console.log('WeChat login response:', response)
 
-      // 保存微信登录会话（7天免登录）
-      if (response.data) {
-        const { session_token, user } = response.data
-        if (session_token && user) {
-          app.setUserSession(user, session_token)
-        }
-        
-        // 兼容旧版本保存方式
-        if (session_token) {
+      // 处理用户数据（通过route_command传递）
+      if (response.route_command) {
+        const routerHandler = app.getRouterHandler()
+        if (routerHandler) {
           try {
-            wx.setStorageSync('authToken', session_token)
-            apiClient.setMobileAuth(session_token)
-          } catch (error) {
-            console.error('Failed to save auth token:', error)
+            await routerHandler.execute(response.route_command)
+          } catch (routerError) {
+            console.error('Route command execution failed:', routerError)
+            // 如果是导航超时，使用降级处理
+            if (routerError.message && routerError.message.includes('timeout')) {
+              console.log('Using fallback navigation due to timeout')
+              this.handleLoginSuccessFallback()
+            } else {
+              // 其他错误也使用降级处理
+              this.handleLoginSuccessFallback()
+            }
           }
+        } else {
+          console.error('RouterHandler not initialized')
+          this.handleLoginSuccessFallback()
         }
+      } else {
+        // 没有route_command，直接跳转首页
+        this.handleLoginSuccessFallback()
       }
-
-      // 处理登录后跳转
-      this.handlePostLoginRedirect(response)
 
     } catch (error) {
       console.error('WeChat login failed:', error)
       
+      let errorMessage = '微信登录失败'
+      
+      if (error.message.includes('40029')) {
+        errorMessage = '登录凭证无效，请重试'
+      } else if (error.message.includes('45011')) {
+        errorMessage = '请求频率过高，请稍后重试'
+      } else if (error.message.includes('Network error')) {
+        errorMessage = '网络连接失败，请检查网络'
+      }
+      
       wx.showToast({
-        title: '微信登录失败',
-        icon: 'error'
+        title: errorMessage,
+        icon: 'error',
+        duration: 3000
       })
       
     } finally {
       this.setData({ isLoading: false })
     }
+  },
+
+  /**
+   * 微信授权登录（兼容旧版本）
+   */
+  async handleWxAuthLogin(e) {
+    if (!e.detail.userInfo) {
+      wx.showToast({
+        title: '需要授权才能登录',
+        icon: 'none'
+      })
+      return
+    }
+
+    // 调用新版微信登录
+    this.handleWxLogin()
   },
 
   /**
@@ -480,6 +506,42 @@ Page({
     } finally {
       this.setData({ isLoading: false })
     }
+  },
+
+  /**
+   * 处理登录成功后的降级导航
+   */
+  handleLoginSuccessFallback() {
+    console.log('Using fallback navigation after successful login')
+    
+    // 简单的延迟确保登录状态已保存
+    setTimeout(() => {
+      try {
+        // 尝试跳转到首页（TabBar页面）
+        wx.switchTab({
+          url: '/pages/home/home',
+          success: () => {
+            console.log('Fallback navigation to home page successful')
+          },
+          fail: (error) => {
+            console.error('Fallback navigation failed:', error)
+            // 最终降级：显示成功提示
+            wx.showToast({
+              title: '登录成功',
+              icon: 'success',
+              duration: 2000
+            })
+          }
+        })
+      } catch (error) {
+        console.error('Fallback navigation exception:', error)
+        wx.showToast({
+          title: '登录成功',
+          icon: 'success',
+          duration: 2000
+        })
+      }
+    }, 300)
   },
 
   /**

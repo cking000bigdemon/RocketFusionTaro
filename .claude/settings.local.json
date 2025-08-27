@@ -36,7 +36,9 @@
       "Bash(tasklist:*)",
       "Bash(start \"\" \"F:\\rust-project\\Rocket\\debug-network-h5.html\")",
       "Bash(start:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(./target/debug/server.exe)",
+      "Bash(copy ai-logo.JPG ai-logo.png)"
     ],
     "deny": [],
     "ask": [],

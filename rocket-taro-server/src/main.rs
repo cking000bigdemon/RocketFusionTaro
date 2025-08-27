@@ -50,6 +50,7 @@ async fn rocket() -> _ {
             routes::auth::get_current_user,
             routes::auth::auth_status,
             routes::auth::guest_login,
+            routes::auth::wx_login,
             routes::cache::cache_health_check,
             routes::cache::invalidate_cache,
             routes::cache::cleanup_expired_sessions,

@@ -3,8 +3,8 @@
 <view class="login-container">
   <!-- 顶部Logo区域 -->
   <view class="logo-section">
-    <view class="logo-icon">🤖</view>
-    <view class="app-name">AI AGENT NOW!</view>
+    <image class="logo-image" src="https://pic5.40017.cn/i/ori/1Gb7urmcFMs.jpg" mode="aspectFit" lazy-load="{{false}}"></image>
+    <view class="app-name">AI Agent Now!</view>
     <view class="welcome-text">AI时代不掉队</view>
     <view class="subtitle">从现在开始！</view>
   </view>
@@ -37,14 +37,12 @@
     </view>
 
     <view class="form-options">
-      <view class="remember-section">
-        <checkbox-group bindchange="onRememberChange">
-          <label class="remember-label">
-            <checkbox value="remember" checked="{{form.rememberMe}}" />
-            <text class="remember-text">记住密码</text>
-          </label>
-        </checkbox-group>
-      </view>
+      <checkbox-group bindchange="onRememberChange">
+        <label class="remember-label">
+          <checkbox value="remember" checked="{{form.rememberMe}}" />
+          <text class="remember-text">记住密码</text>
+        </label>
+      </checkbox-group>
     </view>
 
     <!-- 登录按钮 -->
@@ -57,34 +55,34 @@
       <text wx:else>登录中...</text>
     </button>
 
+    <!-- 分割线 -->
+    <view class="divider">
+      <text class="divider-text">或</text>
+    </view>
+
+    <!-- 微信快捷登录 -->
+    <button 
+      class="wx-quick-login-btn" 
+      bindtap="handleWxLogin"
+      disabled="{{isLoading}}"
+    >
+      <text wx:if="{{!isLoading}}">🟢 微信快捷登录</text>
+      <text wx:else>登录中...</text>
+    </button>
+
     <!-- 快速登录区域 -->
     <view class="quick-login-section">
-      <!-- 游客登录按钮 -->
       <button 
         class="guest-login-btn" 
         bindtap="handleGuestLogin"
         disabled="{{isLoading}}"
       >
-        <text wx:if="{{!isLoading}}">游客登录</text>
+        <text wx:if="{{!isLoading}}">🎭 游客登录</text>
         <text wx:else>登录中...</text>
       </button>
-      
-      <!-- 微信授权登录 -->
-      <view class="wx-login-wrapper" wx:if="{{showWxLogin}}">
-        <button 
-          class="wx-login-btn" 
-          open-type="getUserInfo"
-          bindgetuserinfo="handleWxLogin"
-          disabled="{{isLoading}}"
-        >
-          <text>微信登录</text>
-        </button>
+      <view class="guest-tips">
+        <text class="tips-text">游客登录可快速体验，部分功能受限</text>
       </view>
-    </view>
-
-    <!-- 游客登录说明 -->
-    <view class="guest-login-tips">
-      <text class="tips-text">游客登录可快速体验，部分功能受限</text>
     </view>
 
     <!-- 注册链接 -->

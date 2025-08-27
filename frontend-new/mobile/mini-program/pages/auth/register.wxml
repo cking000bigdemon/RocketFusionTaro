@@ -1,9 +1,11 @@
+<!--register.wxml-->
+<scroll-view class="register-scroll-container" scroll-y="{{true}}" enable-passive="{{true}}">
 <view class="register-container">
   <view class="logo-section">
-    <view class="logo-icon">🚀</view>
-    <view class="app-name">Rocket</view>
-    <view class="welcome-text">注册新账号</view>
-    <view class="subtitle">填写信息完成注册</view>
+    <image class="logo-image" src="https://pic5.40017.cn/i/ori/1Gb7urmcFMs.jpg" mode="aspectFit" lazy-load="{{false}}"></image>
+    <view class="app-name">AI Agent Now!</view>
+    <view class="welcome-text">AI时代不掉队</view>
+    <view class="subtitle">注册账号，从现在开始！</view>
   </view>
 
   <view class="register-form">
@@ -83,6 +85,7 @@
     </view>
   </view>
 </view>
+</scroll-view>
 
 <view class="loading-overlay" wx:if="{{isLoading}}">
   <view class="loading-content">
