@@ -39,11 +39,11 @@ pub async fn create_user(
     let user_id = Uuid::new_v4();
     
     let row = client.query_one(
-        "INSERT INTO users (id, username, email, password_hash, full_name, avatar_url, is_active, is_admin, created_at, updated_at) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-         RETURNING id, username, email, full_name, avatar_url, is_active, is_admin, last_login_at, created_at, updated_at",
+        "INSERT INTO users (id, username, email, password_hash, full_name, avatar_url, is_active, is_admin, is_guest, created_at, updated_at) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+         RETURNING id, username, email, full_name, avatar_url, is_active, is_admin, is_guest, last_login_at, created_at, updated_at",
         &[&user_id, &register_req.username, &register_req.email, &password_hash.hash, 
-          &None::<String>, &None::<String>, &true, &false, &now, &now],
+          &None::<String>, &None::<String>, &true, &false, &false, &now, &now],
     ).await?;
 
     info!("User created successfully: {}", register_req.username);
@@ -56,9 +56,10 @@ pub async fn create_user(
         avatar_url: row.get(4),
         is_active: row.get(5),
         is_admin: row.get(6),
-        last_login_at: row.get(7),
-        created_at: row.get(8),
-        updated_at: row.get(9),
+        is_guest: row.get(7),
+        last_login_at: row.get(8),
+        created_at: row.get(9),
+        updated_at: row.get(10),
     })
 }
 
@@ -72,7 +73,7 @@ pub async fn authenticate_user(
     debug!("Authenticating user: {}", login_req.username);
     
     let row = client.query_opt(
-        "SELECT id, username, email, password_hash, full_name, avatar_url, is_active, is_admin, last_login_at, created_at, updated_at 
+        "SELECT id, username, email, password_hash, full_name, avatar_url, is_active, is_admin, is_guest, last_login_at, created_at, updated_at 
          FROM users WHERE username = $1 AND is_active = true",
         &[&login_req.username],
     ).await?;
@@ -95,9 +96,10 @@ pub async fn authenticate_user(
                 avatar_url: row.get(5),
                 is_active: row.get(6),
                 is_admin: row.get(7),
-                last_login_at: row.get(8),
-                created_at: row.get(9),
-                updated_at: row.get(10),
+                is_guest: row.get(8),
+                last_login_at: row.get(9),
+                created_at: row.get(10),
+                updated_at: row.get(11),
             };
             return Ok(Some(user));
         } else {
@@ -152,7 +154,7 @@ pub async fn validate_session(
     
     let row = client.query_opt(
         "SELECT s.id, s.user_id, s.session_token, s.user_agent, s.ip_address, s.expires_at, s.created_at,
-                u.id, u.username, u.email, u.full_name, u.avatar_url, u.is_active, u.is_admin, u.last_login_at, u.created_at, u.updated_at
+                u.id, u.username, u.email, u.full_name, u.avatar_url, u.is_active, u.is_admin, u.is_guest, u.last_login_at, u.created_at, u.updated_at
          FROM user_sessions s
          JOIN users u ON s.user_id = u.id
          WHERE s.session_token = $1 AND s.expires_at > CURRENT_TIMESTAMP AND u.is_active = true",
@@ -178,9 +180,10 @@ pub async fn validate_session(
             avatar_url: row.get(11),
             is_active: row.get(12),
             is_admin: row.get(13),
-            last_login_at: row.get(14),
-            created_at: row.get(15),
-            updated_at: row.get(16),
+            is_guest: row.get(14),
+            last_login_at: row.get(15),
+            created_at: row.get(16),
+            updated_at: row.get(17),
         };
 
         // 更新最后访问时间
@@ -250,6 +253,80 @@ pub async fn log_login_attempt(
     Ok(())
 }
 
+
+// 认证游客用户（无密码验证）
+pub async fn authenticate_guest_user(
+    pool: &DbPool,
+    username: &str,
+) -> Result<Option<User>, Error> {
+    let client = pool.lock().await;
+    
+    debug!("Authenticating guest user: {}", username);
+    
+    let row = client.query_opt(
+        "SELECT id, username, email, password_hash, full_name, avatar_url, is_active, is_admin, is_guest, last_login_at, created_at, updated_at 
+         FROM users WHERE username = $1 AND is_active = true AND is_guest = true",
+        &[&username],
+    ).await?;
+
+    if let Some(row) = row {
+        info!("Guest user found: {}", username);
+        let user = User {
+            id: row.get(0),
+            username: row.get(1),
+            email: row.get(2),
+            full_name: row.get(4),
+            avatar_url: row.get(5),
+            is_active: row.get(6),
+            is_admin: row.get(7),
+            is_guest: row.get(8),
+            last_login_at: row.get(9),
+            created_at: row.get(10),
+            updated_at: row.get(11),
+        };
+        return Ok(Some(user));
+    }
+    
+    debug!("Guest user not found: {}", username);
+    Ok(None)
+}
+
+// 创建游客用户
+pub async fn create_guest_user(pool: &DbPool) -> Result<User, Error> {
+    let client = pool.lock().await;
+    
+    let timestamp = Utc::now().timestamp();
+    let random_suffix = format!("{:04}", rand::random::<u16>() % 10000);
+    let username = format!("guest_{}{}", timestamp, random_suffix);
+    let email = format!("{}@guest.temp", username);
+    
+    let now = Utc::now();
+    let user_id = Uuid::new_v4();
+    
+    let row = client.query_one(
+        "INSERT INTO users (id, username, email, password_hash, full_name, avatar_url, is_active, is_admin, is_guest, created_at, updated_at) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+         RETURNING id, username, email, full_name, avatar_url, is_active, is_admin, is_guest, last_login_at, created_at, updated_at",
+        &[&user_id, &username, &email, &"", &Some("游客用户".to_string()), 
+          &None::<String>, &true, &false, &true, &now, &now],
+    ).await?;
+
+    info!("Guest user created successfully: {}", username);
+    
+    Ok(User {
+        id: row.get(0),
+        username: row.get(1),
+        email: row.get(2),
+        full_name: row.get(3),
+        avatar_url: row.get(4),
+        is_active: row.get(5),
+        is_admin: row.get(6),
+        is_guest: row.get(7),
+        last_login_at: row.get(8),
+        created_at: row.get(9),
+        updated_at: row.get(10),
+    })
+}
 
 // 清理过期会话
 pub async fn cleanup_expired_sessions(pool: &DbPool) -> Result<u64, Error> {

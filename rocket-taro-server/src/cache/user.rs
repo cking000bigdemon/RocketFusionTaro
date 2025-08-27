@@ -13,6 +13,7 @@ pub struct CachedUser {
     pub avatar_url: Option<String>,
     pub is_active: bool,
     pub is_admin: bool,
+    pub is_guest: bool,
 }
 
 impl From<User> for CachedUser {
@@ -25,6 +26,7 @@ impl From<User> for CachedUser {
             avatar_url: user.avatar_url,
             is_active: user.is_active,
             is_admin: user.is_admin,
+            is_guest: user.is_guest,
         }
     }
 }

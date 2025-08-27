@@ -284,6 +284,58 @@ const handleUserAction = async (actionData) => {
 }
 ```
 
+## Database Modifications (CRITICAL)
+
+### Database Modification Protocol
+**MANDATORY**: When any database schema changes are needed, follow this strict protocol:
+
+1. **SQL Script Creation**:
+   - Write all SQL statements in `rocket-taro-server/src/database/migrations/`
+   - Include clear comments explaining each change
+   - Provide rollback SQL for each modification
+
+2. **Execution Order**:
+   - Clearly document SQL execution order with numbered steps
+   - Include any dependencies between statements
+   - Specify if any data migration is needed
+
+3. **Verification SQL**:
+   - Provide SELECT statements to verify changes
+   - Include expected results for verification
+   - Example:
+   ```sql
+   -- Verification for is_guest column
+   SELECT column_name, data_type, is_nullable, column_default 
+   FROM information_schema.columns 
+   WHERE table_name = 'users' AND column_name = 'is_guest';
+   ```
+
+4. **User Confirmation Required**:
+   - **STOP and ASK**: "Please execute the following SQL in your database..."
+   - **WAIT for confirmation**: "Have you completed the database modifications?"
+   - **ONLY proceed after explicit confirmation**
+
+5. **Database Connection Info**:
+   - Host: 192.168.5.222
+   - Port: 5432
+   - User: user_ck
+   - Database: postgres
+
+### Example Database Modification Flow
+```sql
+-- Step 1: Add new column
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_guest BOOLEAN NOT NULL DEFAULT false;
+
+-- Step 2: Verify column added
+SELECT column_name, data_type, column_default 
+FROM information_schema.columns 
+WHERE table_name = 'users' AND column_name = 'is_guest';
+
+-- Expected result: 
+-- column_name | data_type | column_default
+-- is_guest    | boolean   | false
+```
+
 ## Testing & Quality Assurance
 
 ### Backend Testing
@@ -357,6 +409,141 @@ If route configuration fails during development:
 - Test with different User-Agent headers
 
 **Failure to validate routes is a critical development error that can cause navigation failures in production.**
+
+## 微信小程序开发常见问题汇总 (CRITICAL)
+
+### 导航超时问题 (Navigation Timeout)
+
+#### 问题现象
+```
+Navigation failed: {errMsg: "navigateTo:fail timeout"}
+```
+
+#### 根本原因
+1. **TabBar页面导航方式错误**：TabBar页面之间不能使用`wx.redirectTo`
+2. **直接调用wx API违反架构**：应使用后端驱动路由而非直接调用微信API
+3. **页面认证检查逻辑不当**：在页面加载时进行阻塞式认证检查
+
+#### 解决方案
+1. **使用正确的导航API**：
+   ```javascript
+   // ❌ 错误：TabBar页面使用redirectTo
+   wx.redirectTo({ url: '/pages/login/login' })
+   
+   // ✅ 正确：非TabBar页面导航
+   wx.navigateTo({ url: '/pages/login/login' })
+   
+   // ✅ 正确：TabBar页面间导航  
+   wx.switchTab({ url: '/pages/home/home' })
+   ```
+
+2. **使用后端驱动路由**：
+   ```javascript
+   // ❌ 错误：直接调用微信API
+   wx.redirectTo({ url: '/pages/login/login' })
+   
+   // ✅ 正确：使用后端驱动路由
+   await app.handleProtectedPageAccess('/pages/profile/profile')
+   ```
+
+3. **非阻塞式认证检查**：
+   ```javascript
+   // ❌ 错误：阻塞式检查导致超时
+   if (!isLoggedIn) {
+     wx.redirectTo({ url: '/pages/login/login' })  // 可能超时
+     return
+   }
+   
+   // ✅ 正确：异步非阻塞处理
+   if (!isLoggedIn) {
+     try {
+       await app.handleProtectedPageAccess(getCurrentPath())
+     } catch (error) {
+       // 降级处理
+       wx.navigateTo({ url: '/pages/login/login' })
+     }
+     return
+   }
+   ```
+
+### 网络连接拒绝问题 (ERR_CONNECTION_REFUSED)
+
+#### 问题现象
+```
+POST http://localhost:8000/api/auth/guest-login net::ERR_CONNECTION_REFUSED
+```
+
+#### 根本原因
+- 后端服务器未启动或端口不匹配
+
+#### 解决方案
+1. **确认后端服务状态**：
+   ```bash
+   cd rocket-taro-server && cargo run
+   ```
+2. **验证服务可用性**：
+   ```bash
+   curl http://localhost:8000/api/health
+   ```
+3. **检查开发者工具设置**：确保"不校验合法域名"已开启
+
+### API路由404问题
+
+#### 问题现象
+```
+ERROR No matching routes for GET /api/user/info
+```
+
+#### 根本原因
+- 前端调用了未实现的API端点
+
+#### 解决方案
+1. **前后端API契约验证**：确保前端调用的API端点在后端已实现
+2. **定期检查404错误日志**：及时发现和修复缺失的API
+3. **API文档同步**：保持前后端API文档一致
+
+### 页面认证架构最佳实践
+
+#### 标准认证检查模式
+```javascript
+async loadUserInfo() {
+  const userInfo = app.getUserInfo()
+  const isLoggedIn = app.isLoggedIn()
+  const isSessionValid = app.isSessionValid()
+  
+  if (!isLoggedIn || !isSessionValid) {
+    if (isLoggedIn && !isSessionValid) {
+      app.clearUserSession()
+      wx.showToast({
+        title: '登录已过期',
+        icon: 'none'
+      })
+    }
+    
+    try {
+      // 使用后端驱动路由
+      await app.handleProtectedPageAccess(getCurrentPagePath())
+    } catch (error) {
+      console.error('Protected page access failed:', error)
+      // 降级处理：直接导航
+      wx.navigateTo({ url: '/pages/login/login' })
+    }
+    return
+  }
+
+  // 认证通过，正常加载页面数据
+  this.setData({
+    userInfo: userInfo,
+    isLoggedIn: isLoggedIn
+  })
+}
+```
+
+#### 关键要点
+1. **异步处理**：认证检查必须是async函数
+2. **错误降级**：后端路由失败时提供降级方案
+3. **会话清理**：过期会话及时清理
+4. **用户反馈**：提供适当的用户提示
 
 ## Common Issues & Solutions
 

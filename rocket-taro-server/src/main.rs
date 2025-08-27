@@ -34,10 +34,12 @@ async fn rocket() -> _ {
 
     rocket::build()
         .manage(db_pool)
+        .manage(route_config)
         .mount("/api", routes![
             routes::api::health_check,
             routes::api::get_user,
             routes::api::get_data,
+            routes::api::get_public_config,
         ])
         .mount("/", routes![
             routes::user_data::create_user_data,
@@ -47,6 +49,7 @@ async fn rocket() -> _ {
             routes::auth::logout,
             routes::auth::get_current_user,
             routes::auth::auth_status,
+            routes::auth::guest_login,
             routes::cache::cache_health_check,
             routes::cache::invalidate_cache,
             routes::cache::cleanup_expired_sessions,

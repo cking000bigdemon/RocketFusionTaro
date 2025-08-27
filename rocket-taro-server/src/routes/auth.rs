@@ -274,6 +274,79 @@ pub async fn get_current_user(
     }
 }
 
+#[post("/api/auth/guest-login")]
+pub async fn guest_login(
+    pool: &State<DbPool>,
+    redis: &State<RedisPool>,
+    route_config: &State<RouteConfig>,
+    cookies: &CookieJar<'_>,
+    request_info: RequestInfo,
+) -> Json<ApiResponse<LoginResponse>> {
+    let ip_address = request_info.ip_address.unwrap_or_else(|| "0.0.0.0".parse().unwrap());
+    let user_agent = request_info.user_agent.unwrap_or_else(|| "unknown".to_string());
+    
+    info!("Guest login request from IP: {}", ip_address);
+    
+    let platform = Platform::from_user_agent(&user_agent);
+    let auth_use_case = AuthUseCase::new(pool.inner().clone(), route_config.inner().clone());
+    
+    let route_command = match auth_use_case.handle_guest_login(platform).await {
+        Ok(command) => command,
+        Err(e) => {
+            error!("Guest login use case failed: {}", e);
+            RouteCommand::alert("游客登录失败", "游客登录过程中发生错误，请稍后重试")
+        }
+    };
+
+    // 如果是成功的游客登录，创建会话token和设置cookie
+    if let RouteCommand::Sequence { commands, .. } = &route_command {
+        if let Some(RouteCommand::ProcessData { data, .. }) = commands.first() {
+            if let Ok(user_info) = serde_json::from_value::<UserInfo>(data.clone()) {
+                // 由于游客用户无密码，我们直接通过用户名查找用户
+                if let Ok(Some(user)) = crate::database::auth::authenticate_guest_user(pool, &user_info.username).await {
+                    if let Ok(session) = create_user_session(pool, user.id, Some(user_agent.clone()), Some(ip_address)).await {
+                        // 设置会话Cookie
+                        let mut cookie = Cookie::new("session_token", session.session_token.clone());
+                        cookie.set_same_site(SameSite::Lax);
+                        cookie.set_http_only(true);
+                        cookie.set_expires(OffsetDateTime::now_utc() + Duration::hours(8));
+                        cookie.set_path("/");
+                        cookies.add_private(cookie);
+
+                        // 缓存游客用户信息
+                        let user_cache = UserCache::new(redis.inner().clone());
+                        let session_cache = SessionCache::new(redis.inner().clone());
+                        let _ = user_cache.cache_user(&user).await;
+                        let _ = user_cache.cache_username_mapping(&user.username, user.id).await;
+                        let _ = session_cache.cache_user_session(&user, &session).await;
+
+                        // 记录游客登录日志
+                        let _ = log_login_attempt(
+                            pool,
+                            Some(user.id),
+                            &user.username,
+                            true,
+                            Some(ip_address),
+                            Some(user_agent),
+                            Some("游客登录".to_string()),
+                        ).await;
+
+                        let response = LoginResponse {
+                            user: UserInfo::from(user),
+                            session_token: session.session_token,
+                            expires_at: session.expires_at,
+                        };
+
+                        return Json(ApiResponse::success_with_command(response, route_command));
+                    }
+                }
+            }
+        }
+    }
+
+    Json(ApiResponse::command_only(route_command))
+}
+
 #[get("/api/auth/status")]
 pub async fn auth_status(
     route_config: &State<RouteConfig>,

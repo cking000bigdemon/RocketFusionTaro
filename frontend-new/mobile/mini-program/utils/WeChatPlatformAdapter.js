@@ -47,7 +47,17 @@ class WeChatPlatformAdapter {
             } else if (replace) {
                 wx.redirectTo(options)
             } else {
-                wx.navigateTo(options)
+                // 特殊处理：从TabBar页面导航到登录页时使用reLaunch
+                const currentPages = getCurrentPages()
+                const currentPage = currentPages[currentPages.length - 1]
+                const currentPath = currentPage ? currentPage.route : ''
+                
+                if (this.isTabBarPage(currentPath) && miniProgramPath.includes('login')) {
+                    // 从TabBar页面跳转到登录页，使用reLaunch避免导航超时
+                    wx.reLaunch(options)
+                } else {
+                    wx.navigateTo(options)
+                }
             }
         })
     }

@@ -247,6 +247,13 @@ class ApiClient {
     }
 
     /**
+     * 游客登录
+     */
+    async guestLogin() {
+        return this.post('/api/auth/guest-login')
+    }
+
+    /**
      * C端用户注册
      */
     async register(userData) {
@@ -314,7 +321,7 @@ class ApiClient {
      * 检查认证状态（用于受保护页面访问控制）
      */
     async authStatus(params = {}) {
-        return this.get('/auth/status', params)
+        return this.get('/api/auth/status', params)
     }
 
     // ========================

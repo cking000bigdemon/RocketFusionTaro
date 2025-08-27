@@ -423,6 +423,66 @@ Page({
   },
 
   /**
+   * 游客登录
+   */
+  async handleGuestLogin() {
+    this.setData({ isLoading: true })
+
+    try {
+      const apiClient = app.getApiClient()
+      const routerHandler = app.getRouterHandler()
+      
+      if (!apiClient) {
+        throw new Error('API客户端未初始化，请重启小程序')
+      }
+      
+      console.log('Calling guest login API...')
+      const response = await apiClient.guestLogin()
+      
+      console.log('Guest login API called successfully:', response)
+
+      if (response.data) {
+        const { session_token, user } = response.data
+        if (session_token && user) {
+          app.setUserSession(user, session_token)
+          console.log('Guest user session saved:', user.username)
+        }
+        
+        if (session_token) {
+          try {
+            wx.setStorageSync('authToken', session_token)
+            apiClient.setMobileAuth(session_token)
+          } catch (error) {
+            console.error('Failed to save guest auth token:', error)
+          }
+        }
+      }
+
+      this.handlePostLoginRedirect(response)
+
+    } catch (error) {
+      console.error('Guest login failed:', error)
+      
+      let errorMessage = '游客登录失败，请重试'
+      
+      if (error.message.includes('Network error')) {
+        errorMessage = '网络连接失败，请检查网络'
+      } else if (error.message.includes('timeout')) {
+        errorMessage = '请求超时，请重试'
+      }
+      
+      wx.showToast({
+        title: errorMessage,
+        icon: 'error',
+        duration: 3000
+      })
+      
+    } finally {
+      this.setData({ isLoading: false })
+    }
+  },
+
+  /**
    * 分享到朋友圈
    */
   onShareTimeline() {

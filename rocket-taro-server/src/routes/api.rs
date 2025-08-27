@@ -164,3 +164,24 @@ pub fn get_data() -> Json<ApiResponse<Vec<User>>> {
     ];
     Json(ApiResponse::success(users))
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct SystemConfig {
+    pub server_time: DateTime<Utc>,
+    pub version: String,
+    pub platform: String,
+    pub environment: String,
+    pub timezone: String,
+}
+
+#[get("/public/config")]
+pub fn get_public_config() -> Json<ApiResponse<SystemConfig>> {
+    let config = SystemConfig {
+        server_time: Utc::now(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        platform: "rocket-server".to_string(),
+        environment: "development".to_string(),
+        timezone: "UTC".to_string(),
+    };
+    Json(ApiResponse::success(config))
+}

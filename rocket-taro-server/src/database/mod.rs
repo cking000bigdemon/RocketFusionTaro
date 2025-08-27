@@ -52,12 +52,19 @@ async fn init_auth_tables(client: &Client) -> Result<(), Error> {
             avatar_url VARCHAR(500),
             is_active BOOLEAN NOT NULL DEFAULT true,
             is_admin BOOLEAN NOT NULL DEFAULT false,
+            is_guest BOOLEAN NOT NULL DEFAULT false,
             last_login_at TIMESTAMPTZ,
             created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         )",
         &[],
     ).await?;
+
+    // 添加is_guest字段（如果不存在）
+    let _ = client.execute(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_guest BOOLEAN NOT NULL DEFAULT false",
+        &[],
+    ).await;
 
     // 创建用户会话表
     client.execute(

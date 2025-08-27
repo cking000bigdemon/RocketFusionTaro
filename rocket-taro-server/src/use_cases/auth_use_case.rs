@@ -411,6 +411,55 @@ impl AuthUseCase {
         }
     }
 
+    /// 处理游客登录请求
+    pub async fn handle_guest_login(&self, platform: Platform) -> UseCaseResult<RouteCommand> {
+        info!("Processing guest login request");
+
+        let guest_user = match self.create_guest_user().await {
+            Ok(user) => {
+                info!("Guest user created successfully: {}", user.username);
+                user
+            }
+            Err(e) => {
+                error!("Failed to create guest user: {}", e);
+                return Ok(RouteCommand::alert("游客登录失败", "创建游客账号失败，请稍后重试"));
+            }
+        };
+
+        match self.create_session(&guest_user).await {
+            Ok(session) => {
+                info!("Guest login session created: {}", guest_user.username);
+                
+                let mut login_result = LoginResult::new(guest_user.clone(), session);
+                let account_flags = self.build_account_flags(&guest_user).await.unwrap_or_default();
+                login_result = login_result.with_account_flags(account_flags);
+                
+                let home_route = self.route_config.get_route("home.main", platform)
+                    .unwrap_or_else(|| "/pages/home/home".to_string());
+                Ok(RouteCommand::sequence(vec![
+                    RouteCommand::process_data("user", serde_json::to_value(UserInfo::from(guest_user))?),
+                    RouteCommand::navigate_to(&home_route),
+                ]))
+            }
+            Err(e) => {
+                warn!("Failed to create session for guest user: {}", e);
+                Ok(RouteCommand::alert("游客登录失败", "创建会话失败，请稍后重试"))
+            }
+        }
+    }
+
+    /// 创建游客用户
+    async fn create_guest_user(&self) -> UseCaseResult<User> {
+        use crate::database::auth::create_guest_user;
+        
+        info!("Creating new guest user");
+        
+        create_guest_user(&self.db_pool).await.map_err(|e| {
+            error!("Database error during guest user creation: {}", e);
+            UseCaseError::DatabaseError(e.to_string())
+        })
+    }
+
     /// 获取当前用户信息
     pub async fn get_current_user(&self, user: User) -> UseCaseResult<RouteCommand> {
         Ok(RouteCommand::process_data(

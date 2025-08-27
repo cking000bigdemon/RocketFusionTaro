@@ -8,28 +8,28 @@
   ],
   "window": {
     "backgroundTextStyle": "light",
-    "navigationBarBackgroundColor": "#4A90E2",
-    "navigationBarTitleText": "AgentNow",
+    "navigationBarBackgroundColor": "#667eea",
+    "navigationBarTitleText": "AI AGENT NOW",
     "navigationBarTextStyle": "white",
     "backgroundColor": "#f8f8f8"
   },
   "tabBar": {
     "color": "#999999",
-    "selectedColor": "#07c160",
+    "selectedColor": "#667eea",
     "backgroundColor": "#ffffff",
     "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/home/home",
-        "text": "首页"
+        "text": "🏠 首页"
       },
       {
         "pagePath": "pages/user-data/user-data", 
-        "text": "我的数据"
+        "text": "📊 我的数据"
       },
       {
         "pagePath": "pages/profile/profile",
-        "text": "个人中心"
+        "text": "👤 个人中心"
       }
     ]
   },

@@ -12,6 +12,7 @@ pub struct User {
     pub avatar_url: Option<String>,
     pub is_active: bool,
     pub is_admin: bool,
+    pub is_guest: bool,
     pub last_login_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -47,6 +48,7 @@ pub struct UserInfo {
     pub full_name: Option<String>,
     pub avatar_url: Option<String>,
     pub is_admin: bool,
+    pub is_guest: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -69,6 +71,7 @@ impl From<User> for UserInfo {
             full_name: user.full_name,
             avatar_url: user.avatar_url,
             is_admin: user.is_admin,
+            is_guest: user.is_guest,
         }
     }
 }

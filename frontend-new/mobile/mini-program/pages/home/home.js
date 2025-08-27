@@ -83,5 +83,33 @@ Page({
    */
   onShareAppMessage() {
 
+  },
+
+  navigateToChat() {
+    wx.navigateTo({
+      url: '/pages/chat/chat'
+    })
+  },
+
+  navigateToTools() {
+    wx.navigateTo({
+      url: '/pages/tools/tools'
+    })
+  },
+
+  navigateToProfile() {
+    wx.switchTab({
+      url: '/pages/profile/profile'
+    })
+  },
+
+  navigateToHelp() {
+    wx.navigateTo({
+      url: '/pages/help/help'
+    })
+  },
+
+  quickStartChat() {
+    this.navigateToChat()
   }
 })

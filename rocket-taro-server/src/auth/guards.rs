@@ -63,6 +63,7 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
                             avatar_url: cached_session.user.avatar_url,
                             is_active: cached_session.user.is_active,
                             is_admin: cached_session.user.is_admin,
+                            is_guest: cached_session.user.is_guest,
                             last_login_at: None, // 缓存中不存储这些时间字段
                             created_at: cached_session.session.created_at,
                             updated_at: cached_session.session.created_at,

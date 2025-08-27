@@ -1,15 +1,67 @@
 <!--pages/home/home.wxml-->
-<view class="container">
-  <view class="header">
-    <text class="title">首页</text>
+<view class="ai-home-container">
+  <view class="ai-hero-section">
+    <view class="ai-brand-wrapper">
+      <view class="ai-logo">
+        <view class="ai-logo-icon"></view>
+      </view>
+      <view class="ai-brand-content">
+        <text class="ai-brand-title">AI AGENT NOW!</text>
+        <text class="ai-brand-subtitle">AI时代不掉队，从现在开始！</text>
+      </view>
+    </view>
   </view>
-  
-  <view class="user-info" wx:if="{{isLoggedIn}}">
-    <text class="welcome">欢迎，{{userInfo.username}}</text>
-    <text class="status">认证状态：已登录</text>
+
+  <view class="ai-user-card" wx:if="{{isLoggedIn}}">
+    <view class="ai-user-info">
+      <view class="ai-avatar">
+        <text class="ai-avatar-text">{{userInfo.username.substr(0,1).toUpperCase()}}</text>
+      </view>
+      <view class="ai-user-details">
+        <text class="ai-user-name">欢迎，{{userInfo.username}}</text>
+        <text class="ai-user-status">AI助手已就绪</text>
+      </view>
+    </view>
+    <view class="ai-status-indicator"></view>
   </view>
-  
-  <view class="content">
-    <text class="description">这是一个受保护的页面，需要登录后才能访问。</text>
+
+  <view class="ai-features-grid">
+    <view class="ai-feature-card" bindtap="navigateToChat">
+      <view class="ai-feature-icon ai-icon-chat">
+        <text class="ai-icon-text">🤖</text>
+      </view>
+      <text class="ai-feature-title">AI对话</text>
+      <text class="ai-feature-desc">智能助手随时为您服务</text>
+    </view>
+    
+    <view class="ai-feature-card" bindtap="navigateToTools">
+      <view class="ai-feature-icon ai-icon-tools">
+        <text class="ai-icon-text">⚡</text>
+      </view>
+      <text class="ai-feature-title">智能工具</text>
+      <text class="ai-feature-desc">效率工具一站式体验</text>
+    </view>
+    
+    <view class="ai-feature-card" bindtap="navigateToProfile">
+      <view class="ai-feature-icon ai-icon-profile">
+        <text class="ai-icon-text">👤</text>
+      </view>
+      <text class="ai-feature-title">个人中心</text>
+      <text class="ai-feature-desc">管理个人信息和偏好</text>
+    </view>
+    
+    <view class="ai-feature-card" bindtap="navigateToHelp">
+      <view class="ai-feature-icon ai-icon-help">
+        <text class="ai-icon-text">💡</text>
+      </view>
+      <text class="ai-feature-title">帮助中心</text>
+      <text class="ai-feature-desc">使用指南和常见问题</text>
+    </view>
+  </view>
+
+  <view class="ai-quick-actions">
+    <button class="ai-quick-btn ai-btn-primary" bindtap="quickStartChat">
+      立即开始AI对话
+    </button>
   </view>
 </view>

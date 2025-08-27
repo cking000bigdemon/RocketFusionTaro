@@ -1,11 +1,12 @@
 <!--login.wxml-->
+<scroll-view class="login-scroll-container" scroll-y="{{true}}" enable-passive="{{true}}">
 <view class="login-container">
   <!-- 顶部Logo区域 -->
   <view class="logo-section">
-    <view class="logo-icon">🚀</view>
-    <view class="app-name">Rocket</view>
-    <view class="welcome-text">欢迎使用</view>
-    <view class="subtitle">请登录您的账户</view>
+    <view class="logo-icon">🤖</view>
+    <view class="app-name">AI AGENT NOW!</view>
+    <view class="welcome-text">AI时代不掉队</view>
+    <view class="subtitle">从现在开始！</view>
   </view>
 
   <!-- 登录表单 -->
@@ -58,42 +59,32 @@
 
     <!-- 快速登录区域 -->
     <view class="quick-login-section">
-      <view class="divider-section">
-        <view class="divider-line"></view>
-        <text class="divider-text">或</text>
-        <view class="divider-line"></view>
-      </view>
-
-      <view class="quick-buttons">
+      <!-- 游客登录按钮 -->
+      <button 
+        class="guest-login-btn" 
+        bindtap="handleGuestLogin"
+        disabled="{{isLoading}}"
+      >
+        <text wx:if="{{!isLoading}}">游客登录</text>
+        <text wx:else>登录中...</text>
+      </button>
+      
+      <!-- 微信授权登录 -->
+      <view class="wx-login-wrapper" wx:if="{{showWxLogin}}">
         <button 
-          class="quick-btn admin-btn" 
-          bindtap="quickLogin" 
-          data-type="admin"
+          class="wx-login-btn" 
+          open-type="getUserInfo"
+          bindgetuserinfo="handleWxLogin"
           disabled="{{isLoading}}"
         >
-          管理员登录
-        </button>
-        <button 
-          class="quick-btn test-btn" 
-          bindtap="quickLogin" 
-          data-type="test"
-          disabled="{{isLoading}}"
-        >
-          测试账号登录
+          <text>微信登录</text>
         </button>
       </view>
     </view>
 
-    <!-- 微信授权登录 -->
-    <view class="wx-login-section" wx:if="{{showWxLogin}}">
-      <button 
-        class="wx-login-btn" 
-        open-type="getUserInfo"
-        bindgetuserinfo="handleWxLogin"
-        disabled="{{isLoading}}"
-      >
-        <text>微信快速登录</text>
-      </button>
+    <!-- 游客登录说明 -->
+    <view class="guest-login-tips">
+      <text class="tips-text">游客登录可快速体验，部分功能受限</text>
     </view>
 
     <!-- 注册链接 -->
@@ -108,6 +99,7 @@
     <text class="platform-text">微信小程序 · {{platformInfo}}</text>
   </view>
 </view>
+</scroll-view>
 
 <!-- 加载遮罩 -->
 <view class="loading-overlay" wx:if="{{isLoading}}">
