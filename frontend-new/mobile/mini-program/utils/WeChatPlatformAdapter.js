@@ -63,10 +63,20 @@ class WeChatPlatformAdapter {
             const isTargetPageTabBar = this.isTabBarPage(targetPath)
             
             if (isCurrentPageTabBar && targetPath.includes('/login/login')) {
-                console.warn(`Preventing TabBar page navigation to login page: ${miniProgramPath}`)
-                console.warn(`Use wx.reLaunch instead for TabBar to login navigation`)
-                // 对于TabBar页面，不应该使用navigateTo导航到登录页面，应该使用reLaunch
-                resolve({ errMsg: 'navigateTo:prevented tabbar to login navigation, use reLaunch instead' })
+                console.log(`TabBar to login navigation detected, using wx.reLaunch`)
+                // 不再阻止导航，而是使用正确的方式
+                wx.reLaunch({
+                    url: miniProgramPath,
+                    success: (res) => {
+                        console.log(`Successfully navigated from TabBar to login: ${miniProgramPath}`)
+                        resolve(res)
+                    },
+                    fail: (error) => {
+                        console.error('Failed to reLaunch to login:', error)
+                        // 降级处理
+                        this.handleNavigationFallback(miniProgramPath, resolve)
+                    }
+                })
                 return
             }
             

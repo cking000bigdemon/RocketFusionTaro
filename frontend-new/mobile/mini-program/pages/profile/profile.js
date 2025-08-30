@@ -286,6 +286,7 @@ Page({
    * 退出登录降级处理
    */
   handleLogoutFallback() {
+    console.log('Executing logout fallback')
     wx.hideLoading()
     
     // 清理本地会话数据
@@ -299,8 +300,15 @@ Page({
     
     // 延迟跳转到登录页
     setTimeout(() => {
+      console.log('Fallback: navigating to login page using wx.reLaunch')
       wx.reLaunch({
-        url: '/pages/login/login'
+        url: '/pages/login/login',
+        success: () => {
+          console.log('Fallback: successfully navigated to login page')
+        },
+        fail: (error) => {
+          console.error('Fallback: failed to navigate to login page:', error)
+        }
       })
     }, 1500)
   },

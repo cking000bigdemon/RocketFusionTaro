@@ -12,7 +12,7 @@ module.exports = {
   
   // AI知识库配置
   aiKnowledge: {
-    webviewUrl: 'http://halo.lxc.cksiyouyun.icu:21000/'
+    webviewUrl: 'https://halo.lxc.cksiyouyun.icu:8088'
   },
   
   // 应用配置

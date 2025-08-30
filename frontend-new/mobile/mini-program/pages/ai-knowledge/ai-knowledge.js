@@ -62,15 +62,31 @@ Page({
 
   onWebViewError(e) {
     console.error('AI知识库网页加载失败:', e)
+    
+    // 解析错误详情
+    let errorMsg = '未知错误'
+    if (e.detail) {
+      if (typeof e.detail === 'string') {
+        errorMsg = e.detail
+      } else if (e.detail.errMsg) {
+        errorMsg = e.detail.errMsg
+      } else {
+        errorMsg = JSON.stringify(e.detail)
+      }
+    }
+    
     this.setData({
       isLoading: false,
       hasError: true,
-      errorMessage: e.detail ? JSON.stringify(e.detail) : '未知错误'
+      errorMessage: errorMsg
     })
+    
+    // 提供更详细的错误提示和解决方案
+    const errorTips = this.getErrorTips(errorMsg)
     
     wx.showModal({
       title: 'WebView加载失败',
-      content: `加载错误：${e.detail ? JSON.stringify(e.detail) : '未知错误'}\n\n当前URL：${this.data.webviewUrl}`,
+      content: `${errorTips}\n\n当前URL：${this.data.webviewUrl}`,
       showCancel: true,
       confirmText: '重试',
       cancelText: '返回',
@@ -107,5 +123,18 @@ Page({
       hasError: false,
       webviewUrl: this.data.webviewUrl.split('?')[0] + '?t=' + Date.now()
     })
+  },
+  
+  // 获取错误提示
+  getErrorTips(errorMsg) {
+    if (errorMsg.includes('域名') || errorMsg.includes('domain')) {
+      return '错误原因：域名未配置\n\n解决方案：\n1. 在微信公众平台配置业务域名\n2. 确保域名已备案\n3. 使用HTTPS协议'
+    } else if (errorMsg.includes('证书') || errorMsg.includes('certificate') || errorMsg.includes('SSL')) {
+      return '错误原因：HTTPS证书问题\n\n解决方案：\n1. 检查证书是否有效\n2. 确保证书链完整\n3. 避免使用自签名证书'
+    } else if (errorMsg.includes('网络') || errorMsg.includes('network')) {
+      return '错误原因：网络连接问题\n\n解决方案：\n1. 检查网络连接\n2. 确认服务器是否可访问\n3. 检查防火墙设置'
+    } else {
+      return `错误信息：${errorMsg}\n\n可能原因：\n1. 域名未在小程序后台配置\n2. HTTPS证书问题\n3. 服务器无法访问`
+    }
   }
 })

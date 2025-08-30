@@ -7,6 +7,7 @@ use crate::models::response::ApiResponse;
 
 /// 前端路由指令执行错误指标
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RouteCommandErrorMetric {
     pub execution_id: String,
     pub command_type: String,
@@ -63,6 +64,7 @@ pub async fn receive_route_command_error_metric(
 
 /// 前端性能指标
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PerformanceMetric {
     pub metric_type: String,
     pub value: f64,
