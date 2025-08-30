@@ -13,6 +13,9 @@ pub struct User {
     pub is_active: bool,
     pub is_admin: bool,
     pub is_guest: bool,
+    pub wx_openid: Option<String>,
+    pub wx_unionid: Option<String>,
+    pub wx_session_key: Option<String>,
     pub last_login_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -49,6 +52,9 @@ pub struct UserInfo {
     pub avatar_url: Option<String>,
     pub is_admin: bool,
     pub is_guest: bool,
+    pub wx_openid: Option<String>,
+    pub has_wx_session: bool,  // 标识是否有有效的微信会话
+    pub display_name: String,  // 优先显示full_name，其次username
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -64,6 +70,8 @@ pub struct UserSession {
 
 impl From<User> for UserInfo {
     fn from(user: User) -> Self {
+        let display_name = user.full_name.clone().unwrap_or_else(|| user.username.clone());
+        
         UserInfo {
             id: user.id,
             username: user.username,
@@ -72,6 +80,9 @@ impl From<User> for UserInfo {
             avatar_url: user.avatar_url,
             is_admin: user.is_admin,
             is_guest: user.is_guest,
+            wx_openid: user.wx_openid.clone(),  // 返回wx_openid用于识别微信用户
+            has_wx_session: user.wx_session_key.is_some(),  // 标识是否有有效的微信会话
+            display_name,  // 优先显示full_name，其次username
         }
     }
 }

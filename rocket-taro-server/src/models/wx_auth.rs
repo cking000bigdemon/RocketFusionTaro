@@ -5,6 +5,10 @@ use chrono::{DateTime, Utc};
 #[derive(Deserialize, Debug)]
 pub struct WxLoginRequest {
     pub code: String,
+    pub encrypted_data: Option<String>,
+    pub iv: Option<String>,
+    pub signature: Option<String>,
+    pub raw_data: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -52,6 +56,9 @@ impl From<WxUser> for crate::models::auth::User {
             is_active: wx_user.is_active,
             is_admin: wx_user.is_admin,
             is_guest: wx_user.is_guest,
+            wx_openid: wx_user.wx_openid,
+            wx_unionid: wx_user.wx_unionid,
+            wx_session_key: wx_user.wx_session_key,
             last_login_at: wx_user.last_login_at,
             created_at: wx_user.created_at,
             updated_at: wx_user.updated_at,

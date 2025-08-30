@@ -10,6 +10,7 @@ mod auth;
 mod cache;
 mod use_cases;
 mod config;
+mod utils;
 
 use rocket::fs::{FileServer, relative};
 use tracing_subscriber;
@@ -51,6 +52,7 @@ async fn rocket() -> _ {
             routes::auth::auth_status,
             routes::auth::guest_login,
             routes::auth::wx_login,
+            routes::auth::update_user_profile,
             routes::cache::cache_health_check,
             routes::cache::invalidate_cache,
             routes::cache::cleanup_expired_sessions,

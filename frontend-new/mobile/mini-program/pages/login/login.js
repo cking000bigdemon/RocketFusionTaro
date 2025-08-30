@@ -63,13 +63,36 @@ Page({
    * 设置平台信息
    */
   setPlatformInfo() {
-    const systemInfo = wx.getSystemInfoSync()
-    const accountInfo = wx.getAccountInfoSync()
-    
-    this.setData({
-      appVersion: accountInfo.miniProgram.version || '1.0.0',
-      platformInfo: `${systemInfo.model} ${systemInfo.system}`
-    })
+    try {
+      // 使用新的API替代已废弃的wx.getSystemInfoSync
+      const deviceInfo = wx.getDeviceInfo()
+      const windowInfo = wx.getWindowInfo()
+      const appBaseInfo = wx.getAppBaseInfo()
+      const accountInfo = wx.getAccountInfoSync()
+      
+      this.setData({
+        appVersion: accountInfo.miniProgram.version || appBaseInfo.version || '1.0.0',
+        platformInfo: `${deviceInfo.model} ${deviceInfo.system || appBaseInfo.platform}`
+      })
+    } catch (error) {
+      console.error('Failed to get platform info:', error)
+      // 降级处理
+      try {
+        const systemInfo = wx.getSystemInfoSync()
+        const accountInfo = wx.getAccountInfoSync()
+        
+        this.setData({
+          appVersion: accountInfo.miniProgram.version || '1.0.0',
+          platformInfo: `${systemInfo.model} ${systemInfo.system}`
+        })
+      } catch (fallbackError) {
+        console.error('Fallback platform info failed:', fallbackError)
+        this.setData({
+          appVersion: '1.0.0',
+          platformInfo: 'WeChat MiniProgram'
+        })
+      }
+    }
   },
 
   /**
@@ -100,6 +123,23 @@ Page({
     
     if (isLoggedIn && isSessionValid) {
       console.log('User already logged in with valid session, redirecting...')
+      
+      // 检查是否已经在登录页面，防止循环跳转
+      const currentPath = getCurrentPages()
+      if (currentPath && currentPath.length > 0) {
+        const currentRoute = currentPath[currentPath.length - 1].route
+        if (currentRoute === 'pages/login/login') {
+          // 延迟跳转，确保app全局状态已同步，避免目标页面检查时状态不一致
+          setTimeout(() => {
+            if (this.redirectPath) {
+              this.navigateToPage(this.redirectPath)
+            } else {
+              this.navigateToPage('/pages/home/home')
+            }
+          }, 500)
+          return
+        }
+      }
       
       if (this.redirectPath) {
         this.navigateToPage(this.redirectPath)
@@ -552,5 +592,43 @@ Page({
       title: 'Rocket小程序 - 现代化移动端应用',
       imageUrl: '/images/share-timeline.jpg'
     }
+  },
+
+  /**
+   * 获取用户资料信息
+   */
+  getUserProfile() {
+    return new Promise((resolve, reject) => {
+      // 检查是否支持getUserProfile
+      if (!wx.getUserProfile) {
+        console.warn('wx.getUserProfile not supported, trying getUserInfo')
+        // 降级到getUserInfo（已废弃但可能仍有效）
+        wx.getUserInfo({
+          success: resolve,
+          fail: reject
+        })
+        return
+      }
+
+      wx.getUserProfile({
+        desc: '用于完善会员资料',
+        lang: 'zh_CN',
+        success: (res) => {
+          console.log('getUserProfile success:', res)
+          resolve(res)
+        },
+        fail: (error) => {
+          console.error('getUserProfile failed:', error)
+          
+          // 如果用户拒绝授权，不要当作错误处理
+          if (error.errMsg && error.errMsg.includes('auth deny')) {
+            console.log('User denied profile authorization, continuing without user info')
+            reject(new Error('User denied authorization'))
+          } else {
+            reject(error)
+          }
+        }
+      })
+    })
   }
 })

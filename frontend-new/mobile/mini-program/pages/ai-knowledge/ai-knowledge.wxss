@@ -1,0 +1,147 @@
+.ai-knowledge-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f8f8f8;
+}
+
+.header {
+  background-color: #667eea;
+  padding: 20rpx 32rpx;
+  padding-top: 40rpx;
+  padding-top: calc(40rpx + constant(safe-area-inset-top));
+  padding-top: calc(40rpx + env(safe-area-inset-top));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2rpx 8rpx rgba(102, 126, 234, 0.1);
+}
+
+.title {
+  font-size: 36rpx;
+  font-weight: 600;
+}
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.loading-text {
+  font-size: 24rpx;
+  opacity: 0.8;
+}
+
+.knowledge-webview {
+  flex: 1;
+  width: 100%;
+}
+
+/* 加载状态样式 */
+.loading-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60rpx;
+}
+
+.loading-content {
+  text-align: center;
+}
+
+.loading-message {
+  display: block;
+  font-size: 32rpx;
+  color: #333;
+  margin-bottom: 20rpx;
+}
+
+.loading-url {
+  display: block;
+  font-size: 24rpx;
+  color: #666;
+  word-break: break-all;
+  padding: 20rpx;
+  background-color: #f0f0f0;
+  border-radius: 8rpx;
+}
+
+/* 错误状态样式 */
+.error-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60rpx;
+}
+
+.error-content {
+  text-align: center;
+  max-width: 600rpx;
+}
+
+.error-title {
+  display: block;
+  font-size: 36rpx;
+  color: #ff4757;
+  margin-bottom: 30rpx;
+  font-weight: 600;
+}
+
+.error-message {
+  display: block;
+  font-size: 28rpx;
+  color: #666;
+  margin-bottom: 20rpx;
+  line-height: 1.5;
+}
+
+.error-url {
+  display: block;
+  font-size: 24rpx;
+  color: #999;
+  word-break: break-all;
+  padding: 20rpx;
+  background-color: #f8f8f8;
+  border-radius: 8rpx;
+  margin-bottom: 40rpx;
+}
+
+.retry-button {
+  background-color: #667eea;
+  color: white;
+  border: none;
+  padding: 20rpx 40rpx;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
+/* 无URL状态样式 */
+.no-url-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60rpx;
+}
+
+.no-url-content {
+  text-align: center;
+}
+
+.no-url-title {
+  display: block;
+  font-size: 36rpx;
+  color: #ff4757;
+  margin-bottom: 30rpx;
+  font-weight: 600;
+}
+
+.no-url-message {
+  display: block;
+  font-size: 28rpx;
+  color: #666;
+  line-height: 1.5;
+}

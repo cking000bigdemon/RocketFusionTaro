@@ -1,5 +1,6 @@
 .ai-home-container {
   min-height: 100vh;
+  min-height: calc(100vh - env(safe-area-inset-bottom));
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 0;
   position: relative;
@@ -7,7 +8,10 @@
 }
 
 .ai-hero-section {
-  padding: 60rpx 48rpx 40rpx 48rpx;
+  padding: 40rpx 48rpx;
+  padding-top: 140rpx;
+  padding-top: calc(140rpx + constant(safe-area-inset-top));
+  padding-top: calc(140rpx + env(safe-area-inset-top));
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   position: relative;
 }
@@ -104,6 +108,12 @@
   color: white;
   font-size: 32rpx;
   font-weight: bold;
+}
+
+.ai-avatar-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
 }
 
 .ai-user-details {
@@ -239,6 +249,15 @@
   animation: ai-glow 3s ease-in-out infinite;
 }
 
+/* 灵动岛设备增强适配 */
+@media screen and (min-height: 850px) and (-webkit-device-pixel-ratio: 3) {
+  .ai-hero-section {
+    padding-top: 180rpx;
+    padding-top: calc(180rpx + constant(safe-area-inset-top));
+    padding-top: calc(180rpx + env(safe-area-inset-top));
+  }
+}
+
 @media screen and (max-width: 375px) {
   .ai-brand-title {
     font-size: 48rpx;
@@ -251,4 +270,137 @@
   .ai-feature-card {
     padding: 30rpx 20rpx;
   }
+}
+
+/* 完善个人资料弹窗样式 */
+.profile-prompt-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4rpx);
+}
+
+.modal-content {
+  width: 640rpx;
+  max-width: 90vw;
+  background: white;
+  border-radius: 24rpx;
+  overflow: hidden;
+  position: relative;
+  z-index: 1001;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20rpx) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  padding: 48rpx 48rpx 24rpx;
+  text-align: center;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.modal-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.modal-body {
+  padding: 48rpx;
+  text-align: center;
+}
+
+.prompt-icon {
+  font-size: 120rpx;
+  margin-bottom: 24rpx;
+  opacity: 0.8;
+}
+
+.prompt-text {
+  display: block;
+  font-size: 32rpx;
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 32rpx;
+}
+
+.prompt-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  text-align: left;
+  background: #f8f9ff;
+  padding: 24rpx;
+  border-radius: 16rpx;
+  margin-top: 24rpx;
+}
+
+.tips-item {
+  font-size: 28rpx;
+  color: #555;
+  line-height: 1.4;
+}
+
+.modal-footer {
+  display: flex;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.modal-btn {
+  flex: 1;
+  height: 100rpx;
+  border: none;
+  font-size: 32rpx;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.modal-btn::after {
+  border: none;
+}
+
+.cancel-btn {
+  background: white;
+  color: #666;
+  border-right: 1rpx solid #f0f0f0;
+}
+
+.cancel-btn:active {
+  background: #f5f5f5;
+}
+
+.confirm-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.confirm-btn:active {
+  opacity: 0.8;
 }

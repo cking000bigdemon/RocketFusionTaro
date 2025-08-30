@@ -67,6 +67,28 @@ async fn init_auth_tables(client: &Client) -> Result<(), Error> {
         &[],
     ).await;
 
+    // 添加微信相关字段（如果不存在）
+    let _ = client.execute(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS wx_openid VARCHAR(255)",
+        &[],
+    ).await;
+    
+    let _ = client.execute(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS wx_unionid VARCHAR(255)",
+        &[],
+    ).await;
+    
+    let _ = client.execute(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS wx_session_key VARCHAR(255)",
+        &[],
+    ).await;
+
+    // 为wx_openid添加唯一索引（如果不存在）
+    let _ = client.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_wx_openid ON users(wx_openid) WHERE wx_openid IS NOT NULL",
+        &[],
+    ).await;
+
     // 创建用户会话表
     client.execute(
         "CREATE TABLE IF NOT EXISTS user_sessions (

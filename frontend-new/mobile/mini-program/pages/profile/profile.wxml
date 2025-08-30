@@ -1,11 +1,15 @@
 <view class="profile-container">
   <!-- 用户信息区域 -->
   <view class="user-info-section">
-    <view class="user-avatar">
-      <text class="avatar-text">{{userInfo.avatar || (userInfo.username ? userInfo.username.charAt(0).toUpperCase() : 'U')}}</text>
+    <view class="user-avatar" bindtap="onAvatarTap">
+      <image wx:if="{{userInfo.avatar_url}}" class="avatar-image" src="{{userInfo.avatar_url}}" mode="aspectFill" />
+      <text wx:else class="avatar-text">{{(userInfo.display_name || userInfo.username || '未知').charAt(0).toUpperCase()}}</text>
+      <view class="avatar-overlay">
+        <text class="avatar-tip">点击更新</text>
+      </view>
     </view>
     <view class="user-details">
-      <text class="username">{{userInfo.username || '未知用户'}}</text>
+      <text class="username">{{userInfo.display_name || userInfo.username || '未知用户'}}</text>
       <text class="user-id">ID: {{userInfo.id || 'N/A'}}</text>
     </view>
   </view>

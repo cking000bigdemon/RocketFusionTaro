@@ -64,6 +64,9 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
                             is_active: cached_session.user.is_active,
                             is_admin: cached_session.user.is_admin,
                             is_guest: cached_session.user.is_guest,
+                            wx_openid: cached_session.user.wx_openid,
+                            wx_unionid: cached_session.user.wx_unionid,
+                            wx_session_key: cached_session.user.wx_session_key,
                             last_login_at: None, // 缓存中不存储这些时间字段
                             created_at: cached_session.session.created_at,
                             updated_at: cached_session.session.created_at,

@@ -7,6 +7,7 @@
 const RouterHandlerCore = require('./utils/RouterHandlerCore.js')
 const WeChatPlatformAdapter = require('./utils/WeChatPlatformAdapter.js')
 const ApiClient = require('./utils/ApiClient.js')
+const config = require('./utils/config.js')
 
 App({
   /**
@@ -17,6 +18,7 @@ App({
     systemInfo: null,
     routerHandler: null,
     apiClient: null,
+    config: config,
     settings: {
       theme: 'light',
       language: 'zh-CN',
@@ -157,14 +159,14 @@ App({
     try {
       const apiClient = new ApiClient(this.globalData.routerHandler)
       
-      // 设置基础URL - 小程序环境下直接使用开发URL
+      // 设置基础URL - 小程序环境下使用局域网IP进行真机调试
       const accountInfo = wx.getAccountInfoSync()
       if (accountInfo.miniProgram.envVersion === 'develop' || accountInfo.miniProgram.envVersion === 'trial') {
-        apiClient.setBaseURL('http://localhost:8000')
-        console.log('API Client using development URL: http://localhost:8000')
+        apiClient.setBaseURL(config.api.development)
+        console.log('API Client using development URL:', config.api.development)
       } else {
-        apiClient.setBaseURL('https://your-api-domain.com')
-        console.log('API Client using production URL')
+        apiClient.setBaseURL(config.api.production)
+        console.log('API Client using production URL:', config.api.production)
       }
       
       this.globalData.apiClient = apiClient
@@ -595,23 +597,53 @@ App({
       return true
     }
 
+    // 防止循环请求：如果当前已经在登录页面，不再处理
+    const currentPages = getCurrentPages()
+    if (currentPages && currentPages.length > 0) {
+      const currentRoute = currentPages[currentPages.length - 1].route
+      if (currentRoute === 'pages/login/login') {
+        console.log('Already on login page, skipping protected page access handling')
+        return false
+      }
+    }
+
     try {
       const response = await this.globalData.apiClient.authStatus({ 
         current_path: url 
       })
       
       if (response.route_command) {
+        // 检查路由指令，避免循环导航
+        const command = response.route_command
+        if (command.type === 'NavigateTo' && command.payload && command.payload.path) {
+          const targetPath = command.payload.path.split('?')[0]
+          const currentPath = url.split('?')[0]
+          
+          if (targetPath === currentPath) {
+            console.warn('Preventing navigation loop in handleProtectedPageAccess')
+            return false
+          }
+        }
+        
         await this.globalData.routerHandler.execute(response.route_command)
       } else {
+        // 使用reLaunch确保清空页面栈
         wx.reLaunch({
           url: '/pages/login/login'
         })
       }
     } catch (error) {
       console.error('Failed to handle protected page access:', error)
-      wx.reLaunch({
-        url: '/pages/login/login'
-      })
+      // 只有在不是登录页面时才跳转到登录页
+      const currentPages = getCurrentPages()
+      if (currentPages && currentPages.length > 0) {
+        const currentRoute = currentPages[currentPages.length - 1].route
+        if (currentRoute !== 'pages/login/login') {
+          wx.reLaunch({
+            url: '/pages/login/login'
+          })
+        }
+      }
     }
 
     return false

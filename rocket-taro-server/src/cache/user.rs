@@ -14,6 +14,9 @@ pub struct CachedUser {
     pub is_active: bool,
     pub is_admin: bool,
     pub is_guest: bool,
+    pub wx_openid: Option<String>,
+    pub wx_unionid: Option<String>,
+    pub wx_session_key: Option<String>,
 }
 
 impl From<User> for CachedUser {
@@ -27,6 +30,9 @@ impl From<User> for CachedUser {
             is_active: user.is_active,
             is_admin: user.is_admin,
             is_guest: user.is_guest,
+            wx_openid: user.wx_openid,
+            wx_unionid: user.wx_unionid,
+            wx_session_key: user.wx_session_key,
         }
     }
 }

@@ -8,9 +8,10 @@ use crate::models::{
 };
 use crate::database::{
     DbPool,
-    wx_auth::{code2session, find_user_by_openid, create_wx_user, update_wx_user_session},
+    wx_auth::{code2session, find_user_by_openid, create_wx_user, update_wx_user_session, update_wx_user_profile},
     auth::create_user_session,
 };
+use crate::utils::wx_crypto::WxCrypto;
 use crate::config::{RouteConfig, Platform};
 
 pub struct WxAuthUseCase {
@@ -43,7 +44,7 @@ impl WxAuthUseCase {
         };
 
         // 2. 查找或创建用户
-        let wx_user = match self.find_or_create_wx_user(
+        let mut wx_user = match self.find_or_create_wx_user(
             &wx_response.openid,
             wx_response.unionid.as_deref(),
             &wx_response.session_key,
@@ -55,7 +56,36 @@ impl WxAuthUseCase {
             }
         };
 
-        // 3. 创建系统会话
+        // 3. 如果提供了用户信息的加密数据，进行解密和验证
+        if let (Some(encrypted_data), Some(iv), Some(signature), Some(raw_data)) = (
+            &wx_login_req.encrypted_data,
+            &wx_login_req.iv,
+            &wx_login_req.signature,
+            &wx_login_req.raw_data,
+        ) {
+            info!("开始处理微信用户信息解密");
+            
+            match self.process_encrypted_user_info(
+                &mut wx_user,
+                encrypted_data,
+                iv,
+                signature,
+                raw_data,
+                &wx_response.session_key,
+            ).await {
+                Ok(_) => {
+                    info!("用户信息更新成功");
+                },
+                Err(e) => {
+                    // 解密失败不应该影响登录流程，只记录警告
+                    warn!("用户信息解密失败，但不影响登录: {}", e);
+                }
+            }
+        } else {
+            info!("未提供用户信息加密数据，跳过用户信息更新");
+        }
+
+        // 4. 创建系统会话
         let session = match create_user_session(
             &self.db_pool,
             wx_user.id,
@@ -71,7 +101,7 @@ impl WxAuthUseCase {
 
         info!("微信用户登录成功: {}", wx_user.username);
 
-        // 4. 生成路由指令
+        // 5. 生成路由指令
         // 构建用户信息
         let regular_user: crate::models::auth::User = wx_user.clone().into();
         let user_info = UserInfo::from(regular_user);
@@ -140,5 +170,49 @@ impl WxAuthUseCase {
                 Err(format!("查找用户失败: {}", e))
             }
         }
+    }
+
+    async fn process_encrypted_user_info(
+        &self,
+        wx_user: &mut crate::models::wx_auth::WxUser,
+        encrypted_data: &str,
+        iv: &str,
+        signature: &str,
+        raw_data: &str,
+        session_key: &str,
+    ) -> Result<(), String> {
+        info!("开始处理加密的用户信息");
+
+        // 1. 验证数据签名
+        if !WxCrypto::verify_signature(raw_data, session_key, signature)? {
+            return Err("数据签名验证失败".to_string());
+        }
+
+        // 2. 解密用户数据
+        let decrypted_user_info = WxCrypto::decrypt_user_info(encrypted_data, session_key, iv)?;
+
+        // 3. 验证水印
+        let app_id = "wx2078fa60851884ca"; // 应该从配置读取
+        if !WxCrypto::verify_watermark(&decrypted_user_info, app_id)? {
+            warn!("水印验证失败，但继续处理用户信息");
+        }
+
+        // 4. 更新用户信息到数据库
+        if let Err(e) = update_wx_user_profile(
+            &self.db_pool,
+            wx_user.id,
+            &decrypted_user_info.nick_name,
+            &decrypted_user_info.avatar_url,
+        ).await {
+            error!("更新用户信息到数据库失败: {}", e);
+            return Err(format!("更新用户信息失败: {}", e));
+        }
+
+        // 5. 更新内存中的用户对象
+        wx_user.full_name = Some(decrypted_user_info.nick_name);
+        wx_user.avatar_url = Some(decrypted_user_info.avatar_url);
+
+        info!("用户信息处理完成");
+        Ok(())
     }
 }

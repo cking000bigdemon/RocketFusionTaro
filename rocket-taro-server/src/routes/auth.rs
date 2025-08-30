@@ -435,11 +435,107 @@ pub async fn wx_login(
             avatar_url: None,
             is_admin: false,
             is_guest: true,
+            wx_openid: None,
+            has_wx_session: false,
+            display_name: "wx_user".to_string(),
         },
         session_token: "".to_string(),
         expires_at: chrono::Utc::now(),
     };
 
     Json(ApiResponse::success_with_command(default_response, route_command))
+}
+
+#[derive(serde::Deserialize, Debug)]
+pub struct UpdateProfileRequest {
+    pub encrypted_data: Option<String>,
+    pub iv: Option<String>,
+    pub signature: Option<String>,
+    pub raw_data: Option<String>,
+}
+
+#[post("/api/auth/update-profile", data = "<profile_req>")]
+pub async fn update_user_profile(
+    pool: &State<DbPool>,
+    redis: &State<RedisPool>,
+    profile_req: Json<UpdateProfileRequest>,
+    auth_user: AuthenticatedUser,
+) -> Json<ApiResponse<UserInfo>> {
+    info!("收到用户信息更新请求: {}", auth_user.user.username);
+    
+    // 检查是否为微信用户（需要有有效的wx_session_key）
+    if auth_user.user.wx_session_key.is_none() {
+        return Json(ApiResponse::error("当前用户不是微信用户或会话已过期，请使用微信重新登录"));
+    }
+    
+    // wx_session_key只在服务端使用，不能返回给客户端
+    let session_key = auth_user.user.wx_session_key.as_ref().unwrap();
+    
+    // 处理用户资料更新
+    match process_user_profile_update(pool, &auth_user.user, &profile_req, session_key).await {
+        Ok(updated_user_info) => {
+            info!("用户信息更新成功: {}", auth_user.user.username);
+            
+            // 更新缓存 - 清除用户缓存和会话缓存
+            let user_cache = UserCache::new(redis.inner().clone());
+            let session_cache = SessionCache::new(redis.inner().clone());
+            let _ = user_cache.invalidate_user(auth_user.user.id).await;
+            let _ = session_cache.invalidate_user_sessions(auth_user.user.id).await;
+            
+            Json(ApiResponse::success(updated_user_info))
+        },
+        Err(e) => {
+            error!("用户信息更新失败: {}", e);
+            Json(ApiResponse::error("用户信息更新失败"))
+        }
+    }
+}
+
+// 辅助函数：处理用户资料更新
+async fn process_user_profile_update(
+    pool: &DbPool,
+    user: &crate::models::auth::User,
+    profile_req: &UpdateProfileRequest,
+    session_key: &str,
+) -> Result<UserInfo, String> {
+    use crate::utils::wx_crypto::WxCrypto;
+    use crate::database::wx_auth::update_wx_user_profile;
+    
+    // 验证必要的数据
+    let encrypted_data = profile_req.encrypted_data.as_ref().ok_or("缺少加密数据")?;
+    let iv = profile_req.iv.as_ref().ok_or("缺少初始向量")?;
+    let signature = profile_req.signature.as_ref().ok_or("缺少签名")?;
+    let raw_data = profile_req.raw_data.as_ref().ok_or("缺少原始数据")?;
+    
+    // 1. 验证数据签名
+    if !WxCrypto::verify_signature(raw_data, session_key, signature)? {
+        return Err("数据签名验证失败".to_string());
+    }
+    
+    // 2. 解密用户Profile数据（使用专门的方法处理wx.getUserProfile数据）
+    let profile_info = WxCrypto::decrypt_user_profile(encrypted_data, session_key, iv)?;
+    
+    // 3. 更新用户信息到数据库（只更新昵称和头像）
+    update_wx_user_profile(
+        pool,
+        user.id,
+        &profile_info.nick_name,
+        &profile_info.avatar_url,
+    ).await.map_err(|e| format!("更新数据库失败: {}", e))?;
+    
+    // 4. 返回更新后的用户信息
+    let display_name = profile_info.nick_name.clone();
+    Ok(UserInfo {
+        id: user.id,
+        username: user.username.clone(),
+        email: user.email.clone(),
+        full_name: Some(profile_info.nick_name),
+        avatar_url: Some(profile_info.avatar_url),
+        is_admin: user.is_admin,
+        is_guest: user.is_guest,
+        wx_openid: user.wx_openid.clone(),
+        has_wx_session: user.wx_session_key.is_some(),
+        display_name,
+    })
 }
 

@@ -39,11 +39,11 @@ pub async fn create_user(
     let user_id = Uuid::new_v4();
     
     let row = client.query_one(
-        "INSERT INTO users (id, username, email, password_hash, full_name, avatar_url, is_active, is_admin, is_guest, created_at, updated_at) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
-         RETURNING id, username, email, full_name, avatar_url, is_active, is_admin, is_guest, last_login_at, created_at, updated_at",
+        "INSERT INTO users (id, username, email, password_hash, full_name, avatar_url, is_active, is_admin, is_guest, wx_openid, wx_unionid, wx_session_key, created_at, updated_at) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
+         RETURNING id, username, email, full_name, avatar_url, is_active, is_admin, is_guest, wx_openid, wx_unionid, wx_session_key, last_login_at, created_at, updated_at",
         &[&user_id, &register_req.username, &register_req.email, &password_hash.hash, 
-          &None::<String>, &None::<String>, &true, &false, &false, &now, &now],
+          &None::<String>, &None::<String>, &true, &false, &false, &None::<String>, &None::<String>, &None::<String>, &now, &now],
     ).await?;
 
     info!("User created successfully: {}", register_req.username);
@@ -57,9 +57,12 @@ pub async fn create_user(
         is_active: row.get(5),
         is_admin: row.get(6),
         is_guest: row.get(7),
-        last_login_at: row.get(8),
-        created_at: row.get(9),
-        updated_at: row.get(10),
+        wx_openid: row.get(8),
+        wx_unionid: row.get(9),
+        wx_session_key: row.get(10),
+        last_login_at: row.get(11),
+        created_at: row.get(12),
+        updated_at: row.get(13),
     })
 }
 
@@ -73,7 +76,7 @@ pub async fn authenticate_user(
     debug!("Authenticating user: {}", login_req.username);
     
     let row = client.query_opt(
-        "SELECT id, username, email, password_hash, full_name, avatar_url, is_active, is_admin, is_guest, last_login_at, created_at, updated_at 
+        "SELECT id, username, email, password_hash, full_name, avatar_url, is_active, is_admin, is_guest, wx_openid, wx_unionid, wx_session_key, last_login_at, created_at, updated_at 
          FROM users WHERE username = $1 AND is_active = true",
         &[&login_req.username],
     ).await?;
@@ -97,9 +100,12 @@ pub async fn authenticate_user(
                 is_active: row.get(6),
                 is_admin: row.get(7),
                 is_guest: row.get(8),
-                last_login_at: row.get(9),
-                created_at: row.get(10),
-                updated_at: row.get(11),
+                wx_openid: row.get(9),
+                wx_unionid: row.get(10),
+                wx_session_key: row.get(11),
+                last_login_at: row.get(12),
+                created_at: row.get(13),
+                updated_at: row.get(14),
             };
             return Ok(Some(user));
         } else {
@@ -154,7 +160,7 @@ pub async fn validate_session(
     
     let row = client.query_opt(
         "SELECT s.id, s.user_id, s.session_token, s.user_agent, s.ip_address, s.expires_at, s.created_at,
-                u.id, u.username, u.email, u.full_name, u.avatar_url, u.is_active, u.is_admin, u.is_guest, u.last_login_at, u.created_at, u.updated_at
+                u.id, u.username, u.email, u.full_name, u.avatar_url, u.is_active, u.is_admin, u.is_guest, u.wx_openid, u.wx_unionid, u.wx_session_key, u.last_login_at, u.created_at, u.updated_at
          FROM user_sessions s
          JOIN users u ON s.user_id = u.id
          WHERE s.session_token = $1 AND s.expires_at > CURRENT_TIMESTAMP AND u.is_active = true",
@@ -181,9 +187,12 @@ pub async fn validate_session(
             is_active: row.get(12),
             is_admin: row.get(13),
             is_guest: row.get(14),
-            last_login_at: row.get(15),
-            created_at: row.get(16),
-            updated_at: row.get(17),
+            wx_openid: row.get(15),
+            wx_unionid: row.get(16),
+            wx_session_key: row.get(17),
+            last_login_at: row.get(18),
+            created_at: row.get(19),
+            updated_at: row.get(20),
         };
 
         // 更新最后访问时间
@@ -264,7 +273,7 @@ pub async fn authenticate_guest_user(
     debug!("Authenticating guest user: {}", username);
     
     let row = client.query_opt(
-        "SELECT id, username, email, password_hash, full_name, avatar_url, is_active, is_admin, is_guest, last_login_at, created_at, updated_at 
+        "SELECT id, username, email, password_hash, full_name, avatar_url, is_active, is_admin, is_guest, wx_openid, wx_unionid, wx_session_key, last_login_at, created_at, updated_at 
          FROM users WHERE username = $1 AND is_active = true AND is_guest = true",
         &[&username],
     ).await?;
@@ -280,9 +289,12 @@ pub async fn authenticate_guest_user(
             is_active: row.get(6),
             is_admin: row.get(7),
             is_guest: row.get(8),
-            last_login_at: row.get(9),
-            created_at: row.get(10),
-            updated_at: row.get(11),
+            wx_openid: row.get(9),
+            wx_unionid: row.get(10),
+            wx_session_key: row.get(11),
+            last_login_at: row.get(12),
+            created_at: row.get(13),
+            updated_at: row.get(14),
         };
         return Ok(Some(user));
     }
@@ -322,6 +334,9 @@ pub async fn create_guest_user(pool: &DbPool) -> Result<User, Error> {
         is_active: row.get(5),
         is_admin: row.get(6),
         is_guest: row.get(7),
+        wx_openid: None,
+        wx_unionid: None,
+        wx_session_key: None,
         last_login_at: row.get(8),
         created_at: row.get(9),
         updated_at: row.get(10),

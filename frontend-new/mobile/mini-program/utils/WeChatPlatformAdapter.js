@@ -15,9 +15,25 @@ class WeChatPlatformAdapter {
      */
     initSystemInfo() {
         try {
-            this.systemInfo = wx.getSystemInfoSync()
+            // 使用新的API替代已废弃的wx.getSystemInfoSync
+            const deviceInfo = wx.getDeviceInfo()
+            const windowInfo = wx.getWindowInfo()
+            const appBaseInfo = wx.getAppBaseInfo()
+            
+            this.systemInfo = {
+                ...deviceInfo,
+                ...windowInfo,
+                ...appBaseInfo
+            }
         } catch (error) {
-            console.error('Failed to get system info:', error)
+            console.error('Failed to get system info with new APIs:', error)
+            // 降级处理
+            try {
+                this.systemInfo = wx.getSystemInfoSync()
+            } catch (fallbackError) {
+                console.error('Fallback system info failed:', fallbackError)
+                this.systemInfo = {}
+            }
         }
     }
 
@@ -30,6 +46,29 @@ class WeChatPlatformAdapter {
         return new Promise((resolve) => {
             // 格式化URL为小程序路径
             const miniProgramPath = this.formatUrlForMiniProgram(url)
+            
+            // 检查是否试图导航到当前页面，防止循环
+            const currentPath = this.getCurrentPath()
+            const targetPath = miniProgramPath.split('?')[0] // 移除查询参数进行比较
+            const currentPagePath = currentPath.split('?')[0]
+            
+            if (targetPath === currentPagePath) {
+                console.warn(`Preventing navigation to current page: ${miniProgramPath}`)
+                resolve({ errMsg: 'navigateTo:already on target page' })
+                return
+            }
+            
+            // 检查是否从TabBar页面试图导航到非TabBar页面（防止阻塞式检查）
+            const isCurrentPageTabBar = this.isTabBarPage(currentPagePath)
+            const isTargetPageTabBar = this.isTabBarPage(targetPath)
+            
+            if (isCurrentPageTabBar && targetPath.includes('/login/login')) {
+                console.warn(`Preventing TabBar page navigation to login page: ${miniProgramPath}`)
+                console.warn(`Use wx.reLaunch instead for TabBar to login navigation`)
+                // 对于TabBar页面，不应该使用navigateTo导航到登录页面，应该使用reLaunch
+                resolve({ errMsg: 'navigateTo:prevented tabbar to login navigation, use reLaunch instead' })
+                return
+            }
             
             console.log(`Attempting navigation to: ${miniProgramPath}`)
             

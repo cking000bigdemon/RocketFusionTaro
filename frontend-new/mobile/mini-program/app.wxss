@@ -582,6 +582,34 @@ page {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* 页面级安全区域适配 */
+.page-safe-top {
+  padding-top: 60rpx;
+  padding-top: calc(60rpx + constant(safe-area-inset-top));
+  padding-top: calc(60rpx + env(safe-area-inset-top));
+}
+
+.page-safe-top-large {
+  padding-top: 120rpx;
+  padding-top: calc(120rpx + constant(safe-area-inset-top));
+  padding-top: calc(120rpx + env(safe-area-inset-top));
+}
+
+/* 灵动岛设备增强适配 */
+@media screen and (min-height: 850px) and (-webkit-device-pixel-ratio: 3) {
+  .page-safe-top {
+    padding-top: 100rpx;
+    padding-top: calc(100rpx + constant(safe-area-inset-top));
+    padding-top: calc(100rpx + env(safe-area-inset-top));
+  }
+
+  .page-safe-top-large {
+    padding-top: 160rpx;
+    padding-top: calc(160rpx + constant(safe-area-inset-top));
+    padding-top: calc(160rpx + env(safe-area-inset-top));
+  }
+}
+
 /* 深色模式支持 */
 @media (prefers-color-scheme: dark) {
   page {

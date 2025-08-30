@@ -1,6 +1,5 @@
 use tokio_postgres::Error;
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 use tracing::{info, error};
 
 use crate::models::wx_auth::{Code2SessionResponse, WxUser};
@@ -12,28 +11,47 @@ pub async fn code2session(app_id: &str, app_secret: &str, code: &str) -> Result<
         app_id, app_secret, code
     );
     
-    info!("Calling WeChat API: code2session");
+    info!("Calling WeChat API: code2session with code: {}", code);
+    info!("WeChat API URL: {}", url);
     
     let response = reqwest::get(&url)
         .await
-        .map_err(|e| format!("HTTP request failed: {}", e))?;
+        .map_err(|e| {
+            error!("HTTP request to WeChat API failed: {}", e);
+            format!("HTTP request failed: {}", e)
+        })?;
+    
+    info!("WeChat API response status: {}", response.status());
         
     if !response.status().is_success() {
+        error!("WeChat API returned non-success status: {}", response.status());
         return Err(format!("WeChat API returned error: {}", response.status()));
     }
     
-    let wx_response: Code2SessionResponse = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse WeChat response: {}", e))?;
+    // 先获取响应文本进行调试
+    let response_text = response.text().await
+        .map_err(|e| {
+            error!("Failed to get WeChat API response text: {}", e);
+            format!("Failed to get response text: {}", e)
+        })?;
+    
+    info!("WeChat API raw response: {}", response_text);
+    
+    let wx_response: Code2SessionResponse = serde_json::from_str(&response_text)
+        .map_err(|e| {
+            error!("Failed to parse WeChat response as JSON: {}", e);
+            format!("Failed to parse WeChat response: {}", e)
+        })?;
         
     if let Some(errcode) = wx_response.errcode {
         if errcode != 0 {
             let errmsg = wx_response.errmsg.unwrap_or_else(|| "Unknown error".to_string());
+            error!("WeChat API returned error code {}: {}", errcode, errmsg);
             return Err(format!("WeChat API error {}: {}", errcode, errmsg));
         }
     }
     
+    info!("WeChat code2session successful, openid: {:?}", wx_response.openid);
     Ok(wx_response)
 }
 
@@ -134,5 +152,23 @@ pub async fn update_wx_user_session(
     ).await?;
     
     info!("Updated WeChat session for user: {}", user_id);
+    Ok(())
+}
+
+pub async fn update_wx_user_profile(
+    pool: &DbPool,
+    user_id: Uuid,
+    full_name: &str,
+    avatar_url: &str,
+) -> Result<(), Error> {
+    let client = pool.lock().await;
+    
+    client.execute(
+        "UPDATE users SET full_name = $1, avatar_url = $2, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $3",
+        &[&full_name, &avatar_url, &user_id],
+    ).await?;
+    
+    info!("Updated WeChat user profile for user: {}, name: {}, avatar: {}", user_id, full_name, avatar_url);
     Ok(())
 }

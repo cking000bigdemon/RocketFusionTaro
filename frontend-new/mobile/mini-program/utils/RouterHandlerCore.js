@@ -268,6 +268,7 @@ class RouterHandlerCore {
                     try {
                         wx.removeStorageSync('userInfo')
                         wx.removeStorageSync('authToken')
+                        wx.removeStorageSync('login_time')
                     } catch (error) {
                         console.error('Failed to clear user storage:', error)
                     }
@@ -280,12 +281,32 @@ class RouterHandlerCore {
                         console.error('Failed to save user info:', error)
                     }
                 } else {
-                    // 设置用户数据
-                    this.globalData.userInfo = data
-                    try {
-                        wx.setStorageSync('userInfo', data)
-                    } catch (error) {
-                        console.error('Failed to save user info:', error)
+                    // 检查是否是包含session_token的完整登录响应
+                    if (data.session_token && data.user) {
+                        // 这是完整的登录响应，需要正确保存会话数据
+                        const { session_token, user, expires_at } = data
+                        this.globalData.userInfo = user
+                        
+                        try {
+                            // 保存用户信息
+                            wx.setStorageSync('userInfo', user)
+                            // 保存认证令牌
+                            wx.setStorageSync('authToken', session_token)
+                            // 保存登录时间
+                            wx.setStorageSync('login_time', Date.now())
+                            
+                            console.log('User session saved via ProcessData:', user.username)
+                        } catch (error) {
+                            console.error('Failed to save session data:', error)
+                        }
+                    } else {
+                        // 普通的用户数据更新
+                        this.globalData.userInfo = data
+                        try {
+                            wx.setStorageSync('userInfo', data)
+                        } catch (error) {
+                            console.error('Failed to save user info:', error)
+                        }
                     }
                 }
                 break

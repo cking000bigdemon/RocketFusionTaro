@@ -15,10 +15,11 @@
   <view class="ai-user-card" wx:if="{{isLoggedIn}}">
     <view class="ai-user-info">
       <view class="ai-avatar">
-        <text class="ai-avatar-text">{{userInfo.username.substr(0,1).toUpperCase()}}</text>
+        <image wx:if="{{userInfo.avatar_url}}" class="ai-avatar-image" src="{{userInfo.avatar_url}}" mode="aspectFill" />
+        <text wx:else class="ai-avatar-text">{{(userInfo.display_name || userInfo.username).substr(0,1).toUpperCase()}}</text>
       </view>
       <view class="ai-user-details">
-        <text class="ai-user-name">欢迎，{{userInfo.username}}</text>
+        <text class="ai-user-name">欢迎，{{userInfo.display_name || userInfo.username}}</text>
         <text class="ai-user-status">AI助手已就绪</text>
       </view>
     </view>
@@ -63,5 +64,28 @@
     <button class="ai-quick-btn ai-btn-primary" bindtap="quickStartChat">
       立即开始AI对话
     </button>
+  </view>
+</view>
+
+<!-- 完善个人资料弹窗 -->
+<view class="profile-prompt-modal" wx:if="{{showProfilePrompt}}">
+  <view class="modal-mask" catchtap="onProfilePromptCancel"></view>
+  <view class="modal-content">
+    <view class="modal-header">
+      <text class="modal-title">完善个人资料</text>
+    </view>
+    <view class="modal-body">
+      <view class="prompt-icon">👤</view>
+      <text class="prompt-text">获取您的微信头像和昵称，让个人资料更完整</text>
+      <view class="prompt-tips">
+        <text class="tips-item">• 更好的个性化体验</text>
+        <text class="tips-item">• 方便其他用户识别</text>
+        <text class="tips-item">• 完全可选，随时可设置</text>
+      </view>
+    </view>
+    <view class="modal-footer">
+      <button class="modal-btn cancel-btn" bindtap="onProfilePromptCancel">取消</button>
+      <button class="modal-btn confirm-btn" bindtap="onProfilePromptConfirm">获取资料</button>
+    </view>
   </view>
 </view>

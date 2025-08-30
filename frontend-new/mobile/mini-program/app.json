@@ -4,7 +4,8 @@
     "pages/auth/register",
     "pages/home/home",
     "pages/profile/profile",
-    "pages/user-data/user-data"
+    "pages/user-data/user-data",
+    "pages/ai-knowledge/ai-knowledge"
   ],
   "window": {
     "backgroundTextStyle": "light",
@@ -26,6 +27,10 @@
       {
         "pagePath": "pages/user-data/user-data", 
         "text": "📊 我的数据"
+      },
+      {
+        "pagePath": "pages/ai-knowledge/ai-knowledge",
+        "text": "🤖 AI知识库"
       },
       {
         "pagePath": "pages/profile/profile",
